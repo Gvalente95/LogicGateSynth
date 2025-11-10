@@ -1,0 +1,29 @@
+.GateNode{
+	position: absolute;
+	width: 20px;
+	height: 20px;
+	background-color: rgb(44, 161, 40);
+}
+
+html, body { margin:0; padding:0; height:100%; overflow:hidden; }
+canvas { position:fixed; inset:0; display:block; background:black; }
+
+
+
+
+.infoText{
+	color:white;
+	text-align: left;
+	font-family: 'MyPixelFont', monospace;
+	font-size: 14px;
+	text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    line-height: 22px;
+    z-index: 1000;
+	user-select: none;
+}
+
+@font-face {
+  font-family: 'MyPixelFont';
+  src: url('Minecraftia-Regular.ttf') format('truetype');
+  font-display: swap;
+}
