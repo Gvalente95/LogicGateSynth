@@ -1,5 +1,6 @@
-function announce(msg, dur = 2000, bgr = "rgba(63,15,15,1)") {
-	const infobox = initLabelDiv(window.innerWidth/2 - msg.length*5, window.innerHeight/2, msg, bgr, "rgba(255,255,255,1)", document.body);
+function announce(msg, dur = 2000, bgr = "rgba(0, 0, 0, 1)") {
+	const infobox = initLabelDiv(window.innerWidth / 2 - msg.length * 5, window.innerHeight / 2, msg, bgr, "rgba(255,255,255,1)", document.body);
+	// _au.playSound(_au.trill, .2);
 	setTimeout(() => infobox.remove(), dur);
 }
 

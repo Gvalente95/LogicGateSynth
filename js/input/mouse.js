@@ -4,37 +4,56 @@ class Mouse{
 		this.delta = [0, 0];
 		this.clickDur = 0;
 		this.clickStart = 0;
+		this.moved = false;
 		this.clicked = false;
+		this.dbClicked = false;
 		this.pressed = false;
 	}
 }
 
 _canvas.addEventListener('wheel', (e) => {
-    e.preventDefault();
+	e.preventDefault();
+	if (_input.keys['shift'] || _input.keys['meta'] || _input.keys['alt'])
+		setScale(clamp(_scale + -e.deltaY * .005, .4, 2));
+	else
+		_camera.move(e.deltaX, e.deltaY);
 });
 
 window.addEventListener("contextmenu", (e) => {
 	e.preventDefault();
-	_menu.toggleContextMenu(_mouse.pos, null);
+	if (!_hovElement && !_selBox.nodes.length)
+		_selBox.reset();
+	if (!_NcStack.length || _hovElement) {
+		_menu.toggleContextMenu(_mouse.pos, _hovElement);
+		_mouse.pressed = 0;
+	}
 });
 
 window.addEventListener("mousedown", (e) => {
-	_mouse.pos = getMousePosCanvas(e);
 	if (_paused)
 		return;
-	if (_selGroup && _input.keys['alt'])
-		duplicateSelGroup();
-	else if (_hovElement && !_selElement)
+	if (_renameNode) Node.setProperty();
+	_mouse.pos = getMousePosCanvas(e);
+	if (_selBox.nodes && _input.keys['alt'])
+		_selBox.dupplicateNodes([-20, -20]);
+	else if (_hovElement) {
+		if (!_selBox.contains(_hovElement))
+			_selBox.reset();
+		_nodes.splice(_nodes.indexOf(_hovElement), 1);
+		_nodes.push(_hovElement);
 		_selElement = _hovElement;
-	else if (_hovHandle && !_selHandle) {
+	}
+	else if (_hovHandle && !_selHandle && !_NcStack.length && e.button === 0) {
 		_hovHandle.dettach();
 		_selHandle = _hovHandle;
-		clearSelGroup();
 	}
 	if (!_selElement && !_selHandle && !_menu.contextMenuActive && e.button === 0)
-		_selBox = _mouse.pos;
+		_selBox.init();
+	else if (_input.keys['shift'] && _hovElement && e.button === 0)
+		_selBox.tryPush(_hovElement);
 	_mouse.pressed = true;
 	_mouse.clickStart = performance.now();
+	_mouse.dbClicked = _mouse.clicked;
 	_mouse.clicked = true;
 	setTimeout(() => _mouse.clicked = false, 150);
 });
@@ -45,9 +64,25 @@ window.addEventListener("mouseup", (e) => {
 	_mouse.clickDur = performance.now() - _mouse.clickStart;
 	let wasClick = _mouse.clickDur < 200;
 
-	if (e.button !== 2)
-		_menu.toggleContextMenu(false);
-	if (_selBox) _selBox = null;
+	if (wasClick)
+		_au.playSound(_au.click);
+	if (wasClick && e.button !== 2 && !_input.keys['alt']) {
+		let hov = _hovElement;
+		if (hov) {
+			_menu.toggleContextMenu(false);
+			if (!_input.keys['shift']) {
+				if (hov.type === "BOOL")
+					hov.setOutput(!hov.output ? 1 : 0);
+				else if (hov.onInspect !== undefined)
+					hov.onInspect();
+				else if (_mouse.dbClicked && hov)
+					_menu.toggleContextMenu(_mouse.pos, hov);
+			}
+		}
+		else if (_menu.contextMenuActive)
+			_menu.toggleContextMenu(false);
+	}
+	_selBox.active = false;
 	if (_selHandle && !wasClick) {
 		let other = Handle.get(_selHandle.end, _selHandle);
 		if (!other || !_selHandle.tryAttachTo(other)) {
@@ -55,109 +90,40 @@ window.addEventListener("mouseup", (e) => {
 			_hangHandle = _selHandle;
 		}
 	}
-	if (_selElement && wasClick && e.button !== 2) {
-		if (_selElement.type === "BOOL")
-			_selElement.setOutput(!_selElement.output ? 1 : 0);
-		else if (_selElement.type === "VALUE")
-			setNodeOutput(_selElement);
-	}
 	_selElement = null;
 	_selHandle = null;
 	_mouse.pressed = false;
-	_mouse.clicked = false;
+	_mouse.dbClicked = false;
 });
+
+function setHoverElements() {
+	_hovElement = Node.get();
+	if (_hovLine) _hovHandle = _hovLine;
+	else _hovHandle = Handle.get(_mouse.pos, _selHandle);
+	if (_hovElement && _menu.contextMenuActive && _mouse.pressed)
+		_menu.toggleContextMenu(null);
+	if (!_selBox.active && _mouse.pressed && !_selHandle)
+		_selBox.moveNodes();
+	if (_selHandle)
+		_selHandle.place(_selHandle.start, [_mouse.pos[0] + _camera.scroll[0], _mouse.pos[1] + _camera.scroll[1]]);
+	else if (_selElement) {
+		const next = [_selElement.pos[0] + _mouse.delta[0], _selElement.pos[1] + _mouse.delta[1]];
+		_selElement.place(next);
+	}
+}
 
 window.addEventListener("mousemove", (e) => {
 	const p = getMousePosCanvas(e);
 	_mouse.delta[0] = p[0] - _mouse.pos[0];
 	_mouse.delta[1] = p[1] - _mouse.pos[1];
+	_mouse.moved = true;
 	_mouse.pos = p;
 	if (_paused)
 		return;
-	_hovElement = Node.get();
-	_hovHandle = Handle.get(_mouse.pos, _selHandle);
-	if (!_selBox && _selGroup && _mouse.pressed) {
-		for (const e of _selGroup) {
-			if (e !== _selElement)
-				e.place([e.pos[0] + _mouse.delta[0], e.pos[1] + _mouse.delta[1]]);
-		}
-	}
-	if (_selHandle)
-		_selHandle.place(_selHandle.start, _mouse.pos);
-	else if (_selElement) {
-		const next = [_selElement.pos[0] + _mouse.delta[0], _selElement.pos[1] + _mouse.delta[1]];
-		_selElement.place(next);
-	}
+	setHoverElements();
+	if (_selBox.active) _selBox.update();
 	_mouse.delta = [0, 0];
-
+	_mouse.moved = true;
+	setTimeout(() => _mouse.moved = false, 50);
 	document.body.style.cursor = (_selElement || _selHandle) ? "grab" :  (_hovElement || _hovHandle) ? "move" : "default";
 });
-
-
-function _copyFactory(e){
-	const cls = e.constructor?.name;
-	if (cls === "GateNode") return new GateNode(e.type, [...e.pos]);
-	if (cls === "OppNode") return new OppNode(e.type, [...e.pos]);
-	try { return new e.constructor(e.type, [...e.pos]); } catch(e1){
-		try { return new e.constructor([...e.pos]); } catch(e2){ return null; }
-	}
-}
-
-function getNodesCopy(nodes){
-	const map = new Map();
-	const out = [];
-	for (const e of nodes){
-		const ne = _copyFactory(e);
-		if (!ne) continue;
-		ne.output = e.output;
-		ne.size = [...e.size];
-		if (ne.place) ne.place([...e.pos]);
-		map.set(e, ne);
-		out.push(ne);
-	}
-	for (const e of _nodes){
-		const ne = map.get(e);
-		if (!e.handles || !ne?.handles) continue;
-		for (let i = 0; i < e.handles.length; i++){
-			const h = e.handles[i];
-			if (!h || !h.attach || h.isInput) continue;
-			const other = h.attach;
-			const op = other.parent;
-			if (!map.has(op)) continue;
-			const nh = ne.handles[i];
-			const nop = map.get(op);
-			const j = op.handles.indexOf(other);
-			const noh = nop.handles[j];
-			nh?.tryAttachTo?.(noh);
-		}
-	}
-	for (const n of out) n.updateOutput?.();
-	return out;
-}
-
-
-function duplicateSelGroup(displace = null) {
-	newSelGroup = getNodesCopy(_selGroup);
-	for (const e of newSelGroup) {
-		e.highlight(true);
-		_nodes.push(e);
-		if (displace)
-			e.place([e.pos[0] + displace[0], e.pos[1] + displace[1]]);
-	}
-	clearSelGroup();
-	_selGroup = newSelGroup;
-	duplicateSel();
-}
-
-function duplicateSel(displace = null) {
-	const toCopy = _hovElement ? _hovElement : _selElement;
-	if (!toCopy)
-		return;
-	const Type = toCopy.constructor;
-	const e = new Type(toCopy.type, toCopy.pos);
-	e.output = toCopy.output;
-	if (displace)
-		e.place([e.pos[0] + displace[0], e.pos[1] + displace[1]]);
-	_selElement = e;
-	_nodes.push(_selElement);
-}

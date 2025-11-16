@@ -10,26 +10,88 @@ function drawCircle(ctx, pos, radius = 2, color = "white", strokeColor = "black"
 }
 
 let showGridLine = true;
-function drawLine(ctx, start, end, color = "white", width = 2, handleSize = 0) {
-	if (showGridLine)
-		return drawRouted(ctx, start, end, color, width, handleSize);
+function drawLine(ctx, start, end, color = "white", width = 8, handleSize = 0, checkPos = false, hasStripes = false) {
+	if (showGridLine) return drawRouted(ctx, start, end, color, width, handleSize, checkPos, hasStripes);
 	ctx.strokeStyle = color;
-	ctx.lineWidth = width;
-	ctx.beginPath();
-	ctx.moveTo(start[0], start[1]);
-	ctx.lineTo(end[0], end[1]);
-	ctx.stroke();
-	if (handleSize > 0)
-		drawCircle(ctx, end, handleSize);
+	let isBetween = isPosBetween(_mouse.pos, start, end, 12);
+	ctx.lineWidth = width * (isBetween ? 3 : 1);
+	if (hasStripes) drawStripedLine(start, end, color);
+	else {
+		ctx.beginPath();
+		ctx.moveTo(start[0], start[1]);
+		ctx.lineTo(end[0], end[1]);
+		ctx.stroke();
+	}
+	if (handleSize > 0) drawCircle(ctx, end, handleSize*_scale);
+	return (isBetween);
 }
 
-function drawPolyline(ctx, pts, color="white", width=2, handleSize=0){
-	ctx.strokeStyle=color; ctx.lineWidth=width;
-	ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
-	for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i][0],pts[i][1]);
-	ctx.stroke();
-	if(handleSize>0) drawCircle(ctx, pts[pts.length-1], handleSize);
+function drawStripedLine(p0, p1, color) {
+	const dx = p1[0] - p0[0];
+	const dy = p1[1] - p0[1];
+	const len = Math.hypot(dx, dy);
+	if (!len) return;
+	const stripe = 10;
+	const speed  = 4;
+	const ux = dx / len;
+	const uy = dy / len;
+	let offset = (_frame * speed) % (stripe * 2);
+	if (len <= stripe) offset = 0;
+	let curX = p0[0] + ux * offset;
+	let curY = p0[1] + uy * offset;
+	let remaining = len - offset;
+	if (remaining <= 0) {
+		curX = p0[0];
+		curY = p0[1];
+		remaining = len;
+		offset = 0;
+	}
+	const steps = Math.ceil(remaining / stripe);
+	const alternateClr = setAlpha(color, .2);
+	for (let s = 0; s < steps; s++) {
+		const segLen = Math.min(stripe, remaining - s * stripe);
+		const nextX = curX + ux * segLen;
+		const nextY = curY + uy * segLen;
+		ctx.beginPath();
+		ctx.moveTo(curX, curY);
+		ctx.lineTo(nextX, nextY);
+		ctx.strokeStyle = s % 2 === 0 ? color : alternateClr;
+		ctx.stroke();
+		curX = nextX;
+		curY = nextY;
+	}
 }
+
+function drawPolyline(ctx, pts, color="white", width=8, handleSize=0, checkPos = false, hasStripes = false) {
+	let isBetween = false;
+	let curWidth = width;
+
+	function checkInBetween(i) {
+		if (!checkPos || isBetween) return;
+		if (_selBox.active) isBetween = lineIntersectsRect(pts[i], pts[i - 1], _selBox.pos, _selBox.size);
+		else isBetween = isPosBetween(_mouse.pos, pts[i], pts[i - 1], 12);
+		if (isBetween) curWidth = width * 2;
+	}
+	if (pts.length > 1) checkInBetween(1)
+	ctx.beginPath();
+	ctx.moveTo(pts[0][0], pts[0][1]);
+	for (let i = 1; i < pts.length; i++) {
+		checkInBetween(i);
+		if (hasStripes) drawStripedLine(pts[i - 1], pts[i], color);
+		else ctx.lineTo(pts[i][0], pts[i][1]);
+	}
+	if (curWidth > 6) {
+		ctx.strokeStyle = "rgba(255, 255, 255, 0.44)";
+		ctx.lineWidth = curWidth + 2;
+		ctx.stroke();
+	}
+	ctx.strokeStyle = color;
+	ctx.lineWidth = curWidth;
+	ctx.stroke();
+	if (handleSize > 0) drawCircle(ctx, pts[pts.length - 1], handleSize * _scale, addColor(color, "black", .3), "black", 1);
+	return isBetween;
+}
+
 
 function inflate(r,m){ return {x:r.x-m,y:r.y-m,w:r.w+2*m,h:r.h+2*m}; }
 function hitsH(y,x1,x2,r){ const L=Math.min(x1,x2), R=Math.max(x1,x2); return y>=r.y&&y<=r.y+r.h && !(R<r.x||L>r.x+r.w); }
@@ -70,27 +132,44 @@ function routeOrthSoft(start,end,obstacles=[],margin=6,step=24,maxSteps=4){
 
 	return [[x1,y1],[x1,y2],[x2,y2]];
 }
-function drawRouted(ctx,start,end,color="white",width=2,handleSize=0){
-	const obstacles=_nodes.map(e=>({x:e.pos[0],y:e.pos[1],w:e.size[0],h:e.size[1]}));
-	const pts=routeOrthSoft(start,end,obstacles,6,24,4);
-	drawPolyline(ctx,pts,color,width,handleSize);
+function drawRouted(ctx, start, end, color = "white", width = 8, handleSize = 0, checkPos, hasStripes) {
+	const obstacles=_nodes.map(e=>({x:e.pos[0] - _camera.scroll[0],y:e.pos[1] - _camera.scroll[1],w:e.size[0],h:e.size[1]}));
+	const pts = routeOrthSoft(start, end, obstacles, 6, 24, 4);
+	return drawPolyline(ctx, pts, color, width, handleSize, checkPos, hasStripes);
 }
 
-
-
-function drawText(ctx, pos, text, color = "white", backgroundColor = null, size = 25, centered = true) {
+function drawText(ctx, pos, text, color = "white", backgroundColor = null, size = 25, centered = true, cursor = "", cursorIndex = null) {
+	size *= _scale;
 	ctx.font = size + "px sans-serif";
+
 	const metrics = ctx.measureText(text);
 	const w = metrics.width + 12;
 	const h = size + 8;
-	let x = pos[0]; let y = pos[1];
-	if (centered) {x -= w / 2; y -= h / 2;}
+
+	let x = pos[0], y = pos[1];
+	if (centered) {
+		x -= w / 2;
+		y -= h / 2;
+	}
+
 	if (backgroundColor) {
 		ctx.fillStyle = backgroundColor;
-		ctx.fillRect(x, y, w, h);
+		ctx.fillRect(x - 5, y - h / 2, w, h);
 	}
+
 	ctx.fillStyle = color;
 	ctx.textAlign = centered ? "center" : "left";
 	ctx.textBaseline = "middle";
-	ctx.fillText(text, centered ? pos[0] : pos[0], pos[1]);
+	ctx.fillText(text, pos[0], pos[1]);
+
+	if (cursor && cursorIndex !== null) {
+		const leftPart = text.slice(0, cursorIndex);
+		const leftWidth = ctx.measureText(leftPart).width;
+		const cursorX = centered
+			? pos[0] - metrics.width / 2 + leftWidth
+			: pos[0] + leftWidth;
+		ctx.fillStyle = "rgba(203, 192, 192, 1)";
+		ctx.textAlign = "left";
+		ctx.fillText(cursor, cursorX, pos[1]);
+	}
 }

@@ -39,10 +39,12 @@ function snapToGrid([x, y], cs = _cellSize) {
 }
 
 function clampToCanvas([x, y], [w, h]) {
-  const maxX = _canvas.width - w;
-  const maxY = _canvas.height - h;
-  return [
-    Math.max(50, Math.min(x, maxX - 50)),
-    Math.max(50, Math.min(y, maxY - 100))
-  ];
+	const minX = _camera.minX;
+	const minY = _camera.minY;
+	const maxX = _canvas.width + _camera.maxX - w;
+	const maxY = _canvas.height + _camera.maxY - h;
+	return [
+		clamp(x, minX, maxX),
+		clamp(y, minY, maxY)
+	];
 }

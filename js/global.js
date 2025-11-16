@@ -8,9 +8,28 @@ _hovElement = null;
 _selHandle = null;
 _hovHandle = null;
 _hangHandle = null;
-_selBox = null;
-_selGroup = [];
+_hovLine = null;
 
+_renameNode = null;
+_renameProperty = null;
+_renameFallback = null;
+_renameAll = false;
+_renameIdx = null;
+_frame = 0;
+
+_selBox = new SelBox();
+_camera = new Camera();
 _mouse = new Mouse([0, 0]);
 _input = new Input();
 _menu = new Menu();
+_NcStack = [];
+_au = new AudioManager();
+_scale = 1;
+
+_NodesRegistry = {
+	GateNode,
+	ValNode,
+	OppNode,
+	NodeContainer,
+	DisplayNode,
+};

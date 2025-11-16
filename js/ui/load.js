@@ -3,7 +3,7 @@ function loadNode(name, pos=[100,100]){
   const raw = localStorage.getItem("logic:NodeContainer:"+name);
   if(!raw) return null;
   const {type,data} = JSON.parse(raw);
-  const NodeContainer = new NodeContainer(pos, name, type, data);
+  const NodeContainer = new NodeContainer(type, pos, name, data);
   _nodes.push(NodeContainer);
   return NodeContainer;
 }
@@ -12,7 +12,7 @@ function instantiateNode(name, pos=[100,100]){
   const raw = localStorage.getItem("logic:NodeContainer:"+name);
   if(!raw) return null;
   const {data} = JSON.parse(raw);
-  const tmp = new NodeContainer(pos, name, "inst", data);
+  const tmp = new NodeContainer("inst", pos, name, data);
   return tmp.instantiate({offset:pos, attach:true});
 }
 
@@ -29,13 +29,13 @@ function load(name="preset"){
     _nodes.push(e);
     map[r.id] = e;
   }
-  for(const e of _nodes) e.updateOutput?.();
+  for(const e of _nodes) e.updateInput?.();
   for(const ed of data.edges){
     const a = map[ed.from.e]?.handles?.[ed.from.h];
     const b = map[ed.to.e]?.handles?.[ed.to.h];
     a?.tryAttachTo?.(b);
   }
-  for(const e of _nodes) e.updateOutput?.();
+  for(const e of _nodes) e.updateInput?.();
   return true;
 }
 

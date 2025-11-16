@@ -39,7 +39,7 @@ async function saveAsNode(elements, name, type="custom"){
   elements.forEach((e,i)=>edges.push(..._edgeRecords(i,e,elements)));
   const data = { v:1, nodes, edges };
   localStorage.setItem("logic:NodeContainer:"+name, JSON.stringify({name,type,data}));
-  const NodeContainer = new NodeContainer([origin[0], origin[1]], name, type, data);
+  const NodeContainer = new NodeContainer(type, [origin[0], origin[1]], name, data);
   _nodes.push(NodeContainer);
   announce(name+" saved");
   return NodeContainer;
@@ -55,32 +55,7 @@ function saveSelGroup() {
 		if (!name) return announce("invalid name");
 		promptUser("Type","").then(type => {
 			if (!type) return announce("invalid type");
-			saveNode(_selGroup, name, type);
+			saveNode(_selBox.nodes, name, type);
 		});
 	});
 }
-
-function canBeSaved(group) {
-	var groupInput = null;
-	var groupOutput = null;
-	for (const e of group) {
-		for (const h of e.handles) {
-			if (!h.attach) {
-				if (h.isInput) {
-					if (groupInput)
-						return false;
-					groupInput = h;
-				}
-				else {
-					if (groupOutput)
-						return false;
-					groupOutput = h;
-				}
-			}
-		}
-	}
-	if (!groupOutput && !groupInput)
-		return false;
-	return [groupInput, groupOutput];
-}
-
