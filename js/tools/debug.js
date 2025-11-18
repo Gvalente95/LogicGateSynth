@@ -1,4 +1,3 @@
-_debug = true;
 function log(text, element = null, color = null) {
 	if (!_debug) return;
 	

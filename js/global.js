@@ -16,6 +16,9 @@ _renameFallback = null;
 _renameAll = false;
 _renameIdx = null;
 _frame = 0;
+_debug = false;
+
+const _bgrClr = 'rgba(140, 194, 219, 1)';
 
 _selBox = new SelBox();
 _camera = new Camera();
@@ -32,4 +35,7 @@ _NodesRegistry = {
 	OppNode,
 	NodeContainer,
 	DisplayNode,
+	AudioNode,
+	SelNode,
+	SplitNode,
 };

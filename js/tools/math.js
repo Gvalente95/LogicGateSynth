@@ -11,6 +11,8 @@ function rectCollide(posA, sizeA, posB, sizeB) {
 	return !(ax2 < bx1 || ax1 > bx2 || ay2 < by1 || ay1 > by2);
 }
 
+function lerp(a, b, t) {return a + (b - a) * t;}
+
 function isPosBetween(pos, start, end, tolerance = 6) {
 	const toXY = (p) => Array.isArray(p) ? { x: p[0], y: p[1] } : p;
 	const a = toXY(start), b = toXY(end), p = toXY(pos);
@@ -39,7 +41,7 @@ function sumArrays(arr) {
 }
 function averagePositions(positions) {
 	const sum = sumArrays(positions);
-	return ([sum[0] / positions.length - 1, sum[1] / positions.length - 1]);
+	return ([Math.round(sum[0] / positions.length - 1), Math.round(sum[1] / positions.length - 1)]);
 }
 
 function lineIntersectsRect(a, b, rectPos, rectSize) {
@@ -71,4 +73,8 @@ function lineIntersectsRect(a, b, rectPos, rectSize) {
 	}
 
 	return false;
+}
+
+function isPartialNumber(str) {
+    return /^-?\d*(\.\d*)?$/.test(str);
 }

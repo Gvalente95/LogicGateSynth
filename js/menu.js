@@ -4,14 +4,133 @@ class Menu{
 		this.contextMenuPos = [0, 0];
 		this.contextMenuActive = false;
 		this.contextSubPage = null;
+		this.type = "Menu";
+		this.id = 0;
+		this.color = 'purple';
 		this.selPage = null;
+		this.pageToCtor = {
+			'GATE': GateNode, 'OPP': OppNode, 'DISPLAY': DisplayNode, 'AUDIO': AudioNode,
+			'SELECT': SelNode, 'SPLIT': SplitNode, 'VALUE': ValNode
+		};
 		this.nodesPages = {
-			"VALUE": ["VALUE", "BOOL", "TIME", "RAND", "SPLIT2", "SPLIT4", "SPLIT8", "SPLIT16", "SPLIT32", "INCR"],
+			"VALUE": ["NUM", "BOOL", "TIME", "RAND", "INCR"],
 			"OPP": ["ADD", "SUB", "SCALE", "DIV", "MOD","FLOOR", "POW", "MIN", "MAX", "MINMAX", "MAP"],
 			"DISPLAY": ["SCREEN1", "SCREEN2", "SCREEN4", "SCREEN8", "SCREEN16", "SCREEN32"],
+			"SELECT": ["SEL2", "SEL4", "SEL8", "SEL16", "SEL32"],
+			"SPLIT": ["SPLIT2", "SPLIT4", "SPLIT8", "SPLIT16", "SPLIT32"],
+			"AUDIO": ['SINE'],
 			"GATE": ["OR", "AND", "XOR", "NOR", "NAND", "XNOR", "NOT"],
-			"CUSTOM": [],
+			"NC": {},
 		};
+	}
+
+	remove(key, value) {
+		const dict = this.nodesPages;
+		const keys = Object.keys(dict);
+		const index = keys.indexOf(key);
+		if (index < 0) { log("Unvalid page "); return 0;}
+		if (!value) {
+			delete dict[key];
+			return 1;
+		}
+		let valueIndex = dict[key].indexOf(value);
+		if (valueIndex >= 0) {
+			if (dict[key].length <= 1)
+				delete dict[key];
+			else dict[key].splice(valueIndex, 1);
+			return 1;
+		}
+	}
+
+	create(key, value) {
+		const dict = this.nodesPages;
+		const keys = Object.keys(dict);
+		const index = keys.indexOf(key);
+		if (index < 0) dict[key] = [value];
+		else {
+			if (dict[key].includes(value)) return;
+			dict[key].push(value);
+		}
+	}
+
+	getKeyFromValue(name) {
+		const dict = this.nodesPages;
+		for (const k of Object.keys(dict)) {
+			const arr = dict[k];
+			if (!Array.isArray(arr)) continue;
+			if (arr.includes(name)) return k;
+		}
+		return null;
+	}
+
+	replace(key, value, newKey, newValue) {
+		const dict = this.nodesPages;
+
+		if (key == null && value == null) {
+			if (!newKey) { log("replace: no key/value/newKey", this); return 0; }
+			if (!dict[newKey]) dict[newKey] = [];
+			if (newValue == null) return 1;
+			if (!dict[newKey].includes(newValue)) dict[newKey].push(newValue);
+			log(`Ensured ${newValue} exists in ${newKey}`, this);
+			return 1;
+		}
+		if (key == null && value != null) {
+			key = this.getKeyFromValue(value);
+			if (!key) {
+				if (!newKey) { log("replace: no source key, no newKey", this); return 0; }
+				if (!dict[newKey]) dict[newKey] = [];
+				if (!dict[newKey].includes(value)) dict[newKey].push(value);
+				log(`Created ${newKey} with value ${value}`, this);
+				return 1;
+			}
+		}
+		if (!dict[key]) {
+			const nk = this.getKeyFromValue(value);
+			if (nk) {
+				const idx = dict[nk].indexOf(value);
+				if (idx === -1) {
+					dict[nk].push(newValue);
+					log(`replace: pushed value ${newValue} to key ${nk}`, this);
+				}
+				else {
+					dict[key].splice(idx, 1);
+					const val = newValue ? newValue : value;
+					dict[nk].push(val);
+					log(`Moved ${val} from ${key} to ${newKey}`, this);
+				}
+			}
+			else {
+				if (!newKey) { log(`no newKey for ${newValue}`); return 0; }
+				const val = newValue ? newValue : value;
+				dict[newKey] = [val];
+				log(`replace: created ${newKey} key for value ${val}`);
+			}
+			return 1;
+		}
+		if (newValue == null && newKey) {
+			const idx = dict[key].indexOf(value);
+			if (idx < 0) { log(`replace: value ${value} not found in ${key}`, this); return 0; }
+			dict[key].splice(idx, 1);
+			if (!dict[key].length) delete dict[key];
+			if (!dict[newKey]) dict[newKey] = [];
+			if (!dict[newKey].includes(value)) dict[newKey].push(value);
+			log(`Moved ${value} from ${key} to ${newKey}`, this);
+			return 1;
+		}
+		if (!newKey && newValue == null) {
+			log("replace: nothing to do (no newKey, no newValue)", this);
+			return 0;
+		}
+		const idx = dict[key].indexOf(value);
+		if (idx < 0) { log(`replace: value ${value} not found in ${key}`, this); return 0; }
+		const destKey = newKey || key;
+		const toInsert = newValue;
+		dict[key].splice(idx, 1);
+		if (!dict[key].length) delete dict[key];
+		if (!dict[destKey]) dict[destKey] = [];
+		if (!dict[destKey].includes(toInsert)) dict[destKey].push(toInsert);
+		log(`Replaced ${value} in ${key} with ${toInsert} in ${destKey}`, this);
+		return 1;
 	}
 
 	toggleContextMenu(pos, Node = _hovElement) {
@@ -50,6 +169,8 @@ class Menu{
 		}
 		else if (_selBox.nodes.length && _selBox.nodes[0].onInspect !== undefined)
 			options.push("Inspect");
+		if (_selBox.nodes[0].constructor.name === 'ValNode' || _selBox.nodes[0].constructor.name === 'NodeContainer')
+				options.push("Rename");
 		for (const opt of options) {
 			let color = "rgba(255, 255, 255, 0.7)";
 			const rectP = [pos[0] - w / 2, pos[1] - h / 2, w, h];
@@ -63,15 +184,11 @@ class Menu{
 						_selBox.deleteNodes();
 						_hovElement = null;
 					}
-					else if (opt === "Duplicate")
-						_selBox.dupplicateNodes([20, -20]);
-					else if (opt === "Inspect")
-						_selBox.nodes[0].onInspect();
-					else if (opt === "Join")
-						JoinSelGroup();
-					else if (opt === "Link") {
-						tryLinkNodes();
-					}
+					else if (opt === "Duplicate") _selBox.dupplicateNodes([20, -20]);
+					else if (opt === "Inspect") _selBox.nodes[0].onInspect();
+					else if (opt === "Join") JoinSelGroup();
+					else if (opt === "Link") tryLinkNodes();
+					else if (opt === 'Rename') Node.renameNodeProperty(_selBox.nodes[0], 'type', _selBox.nodes[0].type);
 					this.toggleContextMenu(false);
 					if (opt !== 'Duplicate')
 						_selBox.clearNodes();
@@ -109,17 +226,15 @@ class Menu{
 					if (pointInRect(_mouse.pos, [subPos[0], subPos[1]], [ww, hh])) {
 						textClr = "white";
 						if (_mouse.pressed) {
-							var newElem;
-							if (page === "GATE") newElem = new GateNode(Node, this.contextMenuPos);
-							else if (page === 'OPP') newElem = new OppNode(Node, this.contextMenuPos);
-							else if (page === 'DISPLAY') newElem = new DisplayNode(Node, this.contextMenuPos);
-							else newElem = new ValNode(Node, this.contextMenuPos);
+							var newElem = new this.pageToCtor[page](Node, [this.contextMenuPos[0] + _camera.scroll[0], this.contextMenuPos[1] + _camera.scroll[1]]);
 							_nodes.push(newElem);
 							if (_hangHandle) {
 								newElem.place([_hangHandle.end[0], _hangHandle.end[1]]);
 								const hasAttached = _hangHandle.parent?.tryAttachToElement(newElem, _hangHandle);
 								_hangHandle.place();
 								_hangHandle = null;
+								_selBox.reset();
+								_hovLine = null;
 							}
 							else {
 								newElem.place([newElem.pos[0] - newElem.size[0] / 2, newElem.pos[1] - newElem.size[1] / 2]);
@@ -179,7 +294,7 @@ class Menu{
 
 	showSubHeader(ctx) {
 		let w = 180 * _scale;
-		let h = 100;
+		let h = 50;
 		ctx.fillStyle = "rgba(0, 0, 0, 0.14)";
 		ctx.fillRect(0, _canvas.height - h, _canvas.width, h);
 		let pos = [w / 2, _canvas.height - h / 2];
@@ -203,11 +318,7 @@ class Menu{
 					ctx.fillRect(subPos[0] - 2, subPos[1] - 2, ww + 4, hh + 4);
 					if (pointInRect(_mouse.pos, [subPos[0], subPos[1]], [w, hh])) {
 						if (_mouse.clicked) {
-							var newElem;
-							if (page === "GateNode")
-								newElem = new GateNode(Node, _mouse.pos);
-							else
-								newElem = new OppNode(Node, _mouse.pos);
+							var newElem = new this.pageToCtor[page](Node, this.contextMenuPos);
 							_nodes.push(newElem);
 							_selElement = newElem;
 							this.selPage = null;

@@ -61,25 +61,25 @@ class DisplayNode extends Node{
 		this.setOutput(out);
 	}
 
-	setOutput(v) {
-		if (this.output === v) return;
-		this.output = v;
-		for (const n of this.outs){
-			if (n) n.updateInput();
-		}
+	update() {
+		this.updateInput();
 	}
 
-	
 	render(ctx, pos = this.pos, color = this.color, error = false) {
 		super.render(ctx, toWorld(pos), this.size, color, error);
 		const W = this.len, H = this.len;
 		const grid = Array.from({length:H}, ()=> Array(W).fill(0));
 		this.grid = grid;
-		const master = this.handles[this.handles.length - 2]?.attach?.parent?.output;
+		var master = this.handles[this.handles.length - 2]?.attach?.parent?.output;
 		if (master != null) {
+			var isBad = false;
+			if (!isFinite(master) || isNaN(master)) {
+				isBad = true; master = 0;
+			}
 			const m = BigInt(Math.floor(master));
 			for (let y = 0; y < H; y++) {
 				for (let x = 0; x < W; x++) {
+					if (isBad) {grid[y][x] = 1; continue;}
 					const k = BigInt(y*W + x);
 					grid[y][x] = Number((m >> k) & 1n);
 				}

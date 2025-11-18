@@ -82,6 +82,10 @@ class OppNode extends Node{
 		this.setOutput(result);
 	}
 
+	update() {
+		this.updateInput();
+	}
+
 	render(ctx, pos = this.pos, size = this.size) {
 		super.render(ctx, toWorld(pos), size);
 	}

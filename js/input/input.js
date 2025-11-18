@@ -28,6 +28,7 @@ window.addEventListener("keydown", (e) => {
 		case 'd':
 			if (_selBox.nodes.length)
 				_selBox.dupplicateNodes([_mouse.pos[0] - _selBox.nodes[0].pos[0], _mouse.pos[1] - _selBox.nodes[0].pos[1]]);
+			else _debug = !_debug;
 			break;
 		case 'c': if (_input.keys['meta']) _selBox.copy(); break;
 		case 'v': if (_input.keys['meta']) _selBox.paste(); break;

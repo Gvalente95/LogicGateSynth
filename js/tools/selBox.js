@@ -78,6 +78,7 @@ class SelBox{
 			const e = this.nodes[i];
 			if (!e || typeof e.highlight !== "function") { this.nodes.splice(i,1); continue; }
 			e.highlight(false);
+			if (typeof e.highlightLine === "function") e.highlightLine;
 		}
 		this.nodes = [];
 		_selElement = null;
@@ -251,9 +252,12 @@ function setScale(newScale) {
 		const C = n.constructor;
 		let nn;
 		if ('name' in n && 'system' in n) nn = new C(n.type, pos, n.name, n.system);
-		else if ('value' in n)        nn = new C(n.type, pos, n.value);
+		else if ('NUM' in n)        nn = new C(n.type, pos, n.value);
 		else                          nn = new C(n.type, pos);
 		_nodes.push(nn);
+		nn.output = n.output;
+		if (n.name !== undefined) nn.name = n.name;
+		nn.type = n.type;
 	}
 	for (const [h, a] of links) {
 		const i = saved.indexOf(h.parent), j = saved.indexOf(a.parent);

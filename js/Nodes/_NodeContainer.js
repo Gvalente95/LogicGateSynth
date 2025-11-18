@@ -1,5 +1,7 @@
 var isInspecting = false;
 
+var savedContainers = {}
+
 class NodeContainer extends Node{
 	constructor(type, pos, name = "?", system = []){
 		super(pos, [120, 100]);
@@ -11,7 +13,15 @@ class NodeContainer extends Node{
 		this.outs = [];
 		this.innerInHandles = [];
 		this.innerOutHandles = [];
-		this.init(system);
+		if (system) this.init(system);
+	}
+
+	save() {
+		if (!savedContainers[this.structure]) {
+			savedContainers[this.structure] = { "TYPE": this.type, 'NAME': this.name };
+			_menu[this.name + '_' + this.id] = savedContainers[this.structure];
+		}
+		log(`WAS SAVED`, this);
 	}
 
 	initFromStructure(structure) {
@@ -25,7 +35,6 @@ class NodeContainer extends Node{
 
 		let am = Math.max(this.ins.length, this.outs.length);
 		this.size[1] = am * 24 + 10;
-
 		log("INIT FROM STRUCTURE\n	" + this.structure["Tokens"] + "\n" + this.structure["Structure"], this);
 	}
 
@@ -117,21 +126,38 @@ class NodeContainer extends Node{
 			if (!tok) continue;
 			const C = (_NodesRegistry[tok.ctor]) || globalThis[tok.ctor];
 			if (!C) throw new Error(`Constructor not found: ${tok.ctor}`);
-
 			let node;
 			if (tok.ctor === "NodeContainer") {
-				node = new C(tok.type, tok.pos, "NodeContainer", []);
+				node = new C(tok.type, [0, 0], "NodeContainer");
+
 				let payload = tok.payload;
 				if (typeof payload === "string") {
-					try { payload = JSON.parse(payload); } catch {}
+					try {
+						const json = decodeURIComponent(escape(atob(payload)));
+						payload = JSON.parse(json);
+						if (payload && payload.Tokens && payload.Structure)
+							node.initFromStructure(payload);
+					} catch (e) {
+						log("Failed to decode container payload:" + e, this);
+					}
 				}
-				if (payload && payload.Tokens && payload.Structure) {
-					node.initFromStructure(payload);
+			} else
+				node = tok.payload == null ? new C(tok.type, [0, 0]) : new C(tok.type, [0, 0], tok.payload);
+
+			let pos = [0, 0];
+			if (tok.pos) {
+				const parts = String(tok.pos).split(",");
+				if (parts.length >= 2) {
+					const x = +parts[0];
+					const y = +parts[1];
+					if (!Number.isNaN(x) && !Number.isNaN(y))
+						pos = [x, y];
 				}
-			} else {
-				node = tok.payload == null ? new C(tok.type, tok.pos) : new C(tok.type, tok.pos, tok.payload);
+				node.place(pos);
 			}
+			node.parent = this;
 			sys.push(node);
+			log("NODE ADDED: " + node.type + node.pos, this);
 		}
 		return sys;
 	}
@@ -231,14 +257,19 @@ class NodeContainer extends Node{
 		let inY = pos[1] + hl;
 		for (const _ of ins) {
 			const p = [pos[0] - hl, inY];
-			this.handles.push(new Handle(p, p, this, true));
+			const h = new Handle(p, p, this, true);
+			this.handles.push(h);
+			_.attach = h;
+			if (_.label) h.label = _.label;
 			inY += 24;
 		}
 
 		let outY = pos[1] + hl;
 		for (const _ of outs) {
 			const p = [pos[0] + size[0] + hl, outY];
-			this.handles.push(new Handle(p, p, this, false));
+			const h = new Handle(p, p, this, true);
+			this.handles.push(h);
+			if (_.label) h.label = _.label;
 			outY += 24;
 		}
 	}
@@ -280,11 +311,12 @@ class NodeContainer extends Node{
 
 	updateInput(fromHandle = null) {
 		log("");
+		for (const n of this.sys) n.place();
 		if (fromHandle) {
 			var handleIndex = this.handles.indexOf(fromHandle);
 			if (handleIndex < 0 || handleIndex > this.ins.length) {
-				log("RECEIVED INPUT FROM HANDLE AT UNVALID INDEX " + handleIndex + " (RETURNING)", this);
-				return; 
+				log("RECEIVED INPUT FROM HANDLE AT UNVALID INDEX " + handleIndex + " (RETURNING)", this, 'red');
+				return;
 			}
 			log("RECEIVED INPUT FROM HANDLE AT INDEX " + handleIndex, this);
 			const outterIn = this.ins[handleIndex];
@@ -309,6 +341,10 @@ class NodeContainer extends Node{
 		this.setOutput();
 	}
 
+	update() {
+		this.updateInput();
+	}
+
 	onInspect() {
 		pushNcStack(this);
 		displayContainer(this);
@@ -322,10 +358,10 @@ class NodeContainer extends Node{
 function JoinSelGroup(group = _selBox.nodes) {
 	if (!group.length) return;
 	const positions = group.map(n => n.pos);
-	const nc = new NodeContainer("NodeContainer", averagePositions(positions), "NodeContainer", group);
+	const nc = new NodeContainer("NodeContainer", averagePositions(positions), "NC", group);
 	_nodes.push(nc);
 	for (const n of _nodes) {
-		if (group.includes(n)) continue;
+		if (group.includes(n)) { continue }
 		for (const h of n.handles) {
 			if (!h.attach) continue;
 			if (group.includes(h.attach.parent))
@@ -338,6 +374,7 @@ function JoinSelGroup(group = _selBox.nodes) {
 }
 
 function tryJoinGroup(group = _selBox.nodes) {
+	if (isInspecting) { announce("can't do that while inspecting"); return; }
 	if (!group || group.length <= 1) {
 		announce("Group needs to have 2 elements");
 		return;
@@ -424,7 +461,8 @@ function displayContainer(Nc = _NcStack[_NcStack.length - 1]) {
 	if (!_savedNodes)
 		_savedNodes = _nodes;
 	isInspecting = true;
-	// Nc.centerSysElements();
+	// for (const n of Nc.sys)
+	// 	n.place();
 	_nodes = Nc.sys;
 	_camera.clearPosition();
 	_menu.clear();

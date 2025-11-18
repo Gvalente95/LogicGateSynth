@@ -7,6 +7,9 @@ class Node{
 		this.size = [size[0] * _scale, size[1] * _scale];
 		this.isHighlight = false;
 		this.lastUpdateFrame = 0;
+		this.minValue = -Infinity;
+		this.maxValue = Infinity;
+		this.hiddenProperties = [];
 	}
 
 	copy() {
@@ -17,8 +20,12 @@ class Node{
 		return copy;
 	}
 
-	setName(name) {
-		this.name = name;
+	setName(newName) {
+		if (this.constructor.name === "NodeContainer")
+			_menu.replace(this.type, this.name, this.type, newName);
+		this.name = newName;
+		if (_renameNode === this)
+			_renameNode = null;
 	}
 
 	highlight(newHighlight) {
@@ -37,13 +44,18 @@ class Node{
 		}
 	}
 
+	update() {
+		this.updateInput();
+	}
+
 	resize(newSize) {
 		this.size = newSize;
 	}
 
 	drawTextField(text, propertyName, pos, txtClr = "white", bgr = "rgba(119, 119, 119, 1)") {
+		if (this.hiddenProperties.includes(propertyName)) return;
 		var isRename = _renameNode === this && _renameProperty === propertyName;
-		var bgrClr = isRename && _renameAll && text.length ? bgr : null;
+		var bgrClr = isRename && (_renameAll || propertyName === 'output') && text.length ? bgr : null;
 		var hasCursor = (_input.keys['arrowLeft'] || _input.keys['arrowRight']) ||
 			(isRename && (!_renameAll || !text.length)) && ((_frame % 40) < 20);
 		var cursor =  hasCursor ? '▌' : "";
@@ -52,35 +64,50 @@ class Node{
 	}
 
 	displayOutput(pos) {
-		var center = [pos[0] + this.size[0] / 2, pos[1] + this.size[1] / 2]
+		if (this.hiddenProperties.includes('output')) return;
+		var center = [pos[0] + this.size[0] / 2, pos[1] + this.size[1] / 2];
 		if (this instanceof GateNode || this instanceof NodeContainer || this.type === 'BOOL') {
 			const clr = this.output ? "rgba(249, 250, 141, 0.95)" : "rgba(0, 0, 0, 0.72)";
 			drawCircle(ctx, [center[0], center[1]], 3, clr, "rgba(106, 138, 47, 1)", 4);
-		}
-		else {
-			let val = this.output;
+		} else {
+			if (this instanceof AudioNode) center = [pos[0] + this.size[0] * .73, pos[1] + this.size[1] * .35];
+			else if (this.type === 'INCR') center[0] += 20;
 			let shown;
-			const num = Number(val);
-			if (!isNaN(num)) {
-				if (Number.isInteger(num))
-					shown = num.toString();
-				else {
-					const full = num.toString();
-					const short = num.toFixed(5).replace(/\.?0+$/, "");
-					shown = short + (full !== short ? ".." : "");
-				}
-			} else shown = String(val);
-			// this.drawTextField(shown, "output", [pos[0] + size[0] / 2, pos[1] + size[1] / 2], "white", "black");
-			var clr = "black";
 			if (_renameNode === this && _renameProperty === 'output') {
-				clr = _renameAll ? 'red' : 'rgba(119, 119, 119, 1)';
-				shown += ' ';
+				const raw = (_renameNode[_renameProperty] ?? "").toString();
+				shown = raw;
+				const clr = _renameAll ? "black" : "white";
+				const bgrClr = _renameAll ? "white" : "black";
+				this.drawTextField(shown, "output", center, clr, bgrClr);
+			} else {
+				const val = this.output;
+				const num = Number(val);
+				if (!isNaN(num)) {
+					if (Number.isInteger(num)) {
+						shown = num.toString();
+					} else {
+						const full = num.toString();
+						const short = num.toFixed(5).replace(/\.?0+$/, "");
+						shown = short + (full !== short ? ".." : "");
+					}
+				} else {
+					shown = String(val);
+				}
+				drawText(ctx, center, shown, "white", "black");
+				if (this.hiddenProperties.includes('limits')) return;
+				if (_renameNode !== this) return;
+				if (this.minValue !== -Infinity)
+					drawText(ctx, [center[0] - 50, center[1]], this.minValue, "grey", null, 20, false);
+				if (this.maxValue !== Infinity)
+					drawText(ctx, [pos[0] + this.size[0] - 30, center[1]], this.maxValue, "grey", null, 20, false);
 			}
-			drawText(ctx, center, shown, "white", clr);
 		}
 	}
 
+
 	render(ctx, pos = this.pos, size = this.size, color = this.color) {
+		if (isInspecting && this.constructor.name === 'NodeContainer')
+			log("COLOR IS" + color);
 		// ctx.fillStyle = "rgba(0,0,0,1)"; ctx.fillRect(pos[0] - 2, pos[1] - 2, size[0] + 4, size[1] + 4);
 		if (_hovElement === this) color = addColor(color, "rgba(255, 255, 255, 1)", .5)
 		if (!this.output && this.type !== 'BOOL') color = setAlpha(color, .75);
@@ -89,23 +116,27 @@ class Node{
 			ctx.fillStyle = "rgba(89, 146, 193, 0.86)"; ctx.fillRect(pos[0] - h / 2, pos[1] - h / 2, size[0] + h, size[1] + h);
 		}
 		ctx.fillStyle = color; ctx.fillRect(pos[0], pos[1], size[0], size[1]);
-		if (this.constructor.name !== "DisplayNode") {
-			this.displayOutput(pos);
-		}
 		if (this.name !== undefined) {
 			this.drawTextField(this.name, "name", [pos[0] + this.size[0] / 2, pos[1] - 18]);
-			drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] + this.size[1] + 18], this.type, "white");
+			if (!this.hiddenProperties.includes('type'))
+				drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] + this.size[1] + 18], this.type, "white", _bgrClr);
 		}
-		else
-			drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] - 18], this.type, "white");
+		else if (!this.hiddenProperties.includes('type'))
+			drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] - 18], this.type, "grey", _bgrClr);
+		if (this.constructor.name !== "DisplayNode")
+			this.displayOutput(pos);
+	}
+
+	renderHandles(ctx) {
+		const p = toWorld(this.pos); const s = this.size; const c = this.color;
 		for (const h of this.handles) {
 			let dEnd = toWorld(h.start);
-			let dStart = [pos[0], dEnd[1]];
-			if (dEnd[1] < pos[1]) dStart = [dEnd[0], pos[1]];
-			else if (dEnd[1] > pos[1] + size[1]) dStart = [dEnd[0], pos[1] + size[1]];
-			else if (dEnd[0] > pos[0])
-				dStart = [pos[0] + size[0], dEnd[1]];
-			else dStart = [pos[0], dEnd[1]];
+			let dStart = [p[0], dEnd[1]];
+			if (dEnd[1] < p[1]) dStart = [dEnd[0], p[1]];
+			else if (dEnd[1] > p[1] + s[1]) dStart = [dEnd[0], p[1] + s[1]];
+			else if (dEnd[0] > p[0])
+				dStart = [p[0] + s[0], dEnd[1]];
+			else dStart = [p[0], dEnd[1]];
 
 			let clr = addColor(h.isInput && h.attach ? h.attach.parent.color : this.color, "rgba(0, 0, 0, 1)", .4);
 			if ((!h.isInput && !this.output) || (h.isInput && !h.attach?.parent?.output))
@@ -113,8 +144,12 @@ class Node{
 			drawLine(ctx, dStart, dEnd, clr, h.lineIsHighlight ? 16 : 8, 0);
 			h.render(ctx, clr);
 			if (h.label !== undefined)
-				drawText(ctx, [dStart[0] + 15, dStart[1] + 5], h.label, "grey", null, 20);
+				drawText(ctx, [dStart[0] + 10, dStart[1] + 5], h.label, addColor(c, 'rgba(0, 0, 0, 1)', .5), null, 20, false);
 		}
+	}
+
+	hideProperty(property) {
+		this.hiddenProperties.push(property);
 	}
 
 	updateHandles() {
@@ -122,6 +157,10 @@ class Node{
 		const outsSlots = this.handles.filter(h => !h.isInput);
 		this.ins  = insSlots.map(h  => h.attach ? h.attach.parent : null);
 		this.outs = outsSlots.map(h => h.attach ? h.attach.parent : null);
+
+		if (this.parent) {
+			
+		}
 	}
 
 	_tryAttach(targetNode, amount, wantInput, wantOutput, myHandle=null) {
@@ -137,7 +176,7 @@ class Node{
 			for (const oh of targetNode.handles) {
 				if (oh.attach) continue;
 				if (h.tryAttachTo(oh)) {
-					if (--amount < 0)
+					if (--amount <= 0)
 						return 1;
 					attachedOnce = 1;
 				} 
@@ -152,10 +191,12 @@ class Node{
 	setOutput(v) {
 		if (this.lastUpdateFrame === _frame) return;
 		this.lastUpdateFrame = _frame;
-		if (this.output === v) return;
-		this.output = v;
+		if (v != null) {
+			if (this.output === v) return;
+			this.output = v;
+		}
 		log("");
-		log("OUTPUT WAS SET TO " + v, this);
+		log("OUTPUT WAS SET TO " + this.output, this);
 		for (const h of this.handles)
 			if (!h.isInput) h.attach?.parent?.updateInput?.(h.attach);
 	}
@@ -182,15 +223,21 @@ class Node{
 	}
 
 	static setProperty() {
-		if (!_renameNode || !_renameProperty) return;
-		let val = _renameNode[_renameProperty];
+		const n = _renameNode;
+		const p = _renameProperty;
+		if (!n || !p) return;
+		let val = n[p];
 		if (!val?.toString().length)
 			val = '0';
-		if (_renameProperty === 'output') {
-			_renameNode.output = val - 1;
-			_renameNode.setOutput(val);
+		if (p === 'output') {
+			if (val === ".") val = "0";
+			if (val === "-.") val = "-0";
+			n.output = null;
+			n.setOutput(val);
 		}
-		_renameNode[_renameProperty] = val;
+		n[p] = val;
+		if (_renameNode.constructor.name === 'NodeContainer')
+			_renameNode.save();
 		_renameNode = null;
 	}
 
@@ -221,7 +268,15 @@ class Node{
 				}
 			else {
 				var isValid = false;
-				if (_renameProperty === 'output') isValid = (e.key >= '0' && e.key <= '9' && n[p].length < 10);
+				if (_renameProperty === 'output') {
+					const newName = n[p] + e.key;
+					if (_renameAll) {
+						if (isPartialNumber(e.key) || e.key === '.')
+							n[p] = e.key;
+						else return;
+					}
+					isValid = n[p].length < 6 && (isPartialNumber(newName) || n[p] === '.');
+				}
 				else isValid = isPrintableKey(e) && n[p].length < 15;
 				if (isValid) {
 					if (_renameAll) {
@@ -244,9 +299,13 @@ class Node{
 		_renameNode = node;
 		_renameProperty = property;
 		_renameFallback = fallback;
+		_selBox.reset();
 		_renameAll = true;
 		if (property === 'name' && _renameNode[property] === fallback)
 			node[property] = '';
+		prevName = _renameNode[property];
 		_renameIdx = node[property].length;
 	}
 }
+
+var prevName = null;

@@ -1,11 +1,13 @@
 class Handle {
 	constructor(start, end, parent, isInput) {
 		this.attach = null;
+		this.lineIsHighlight = false;
 		this.isInput = isInput;
 		this.parent = parent;
 		this.start = start;
-		this.lineIsHighlight = false;
 		this.end = end;
+		this.size = [40, 40];
+		this.pos = this.start;
 		this.relStart = [start[0] - parent.pos[0], start[1] - parent.pos[1]];
 		this.relEnd = [end[0] - parent.pos[0], end[1] - parent.pos[1]];
 	}
@@ -59,7 +61,7 @@ class Handle {
 			end = tmp;
 		}
 		var mouseAt = false;
-		var shouldCheck = true;
+		var shouldCheck = true; // = _mouse.moved
 		if (this === _selHandle && _hovHandle && this.canAttachTo(_hovHandle))
 			mouseAt = drawLine(ctx, start, toWorld(_hovHandle.end), color, width, 0, shouldCheck, hasOutput);
 		else if (!(this === _hovHandle && _selHandle && _selHandle.canAttachTo(this))){
@@ -96,23 +98,50 @@ class Handle {
 		else {
 			this.start = start;
 			this.end = end;
+			this.pos = this.start;
 			if (this.attach) this.attach.end = end;
 		}
 	}
 
-	static get(pos = _mouse.pos, self = null) {
-		for (let i = _nodes.length - 1; i >= 0; i--){
+	// static get(pos = _mouse.world, self = null, getAttach = false) {
+	// 	for (let i = _nodes.length - 1; i >= 0; i--){
+	// 		const g = _nodes[i];
+	// 		if (g.handles === undefined || !g.handles)
+	// 			continue;
+	// 		var radX = 16;
+	// 		var radY = 16;
+	// 		for (const l of g.handles) {
+	// 			if (self === l) continue;
+	// 			let we = l.end;
+	// 			if (Math.abs((we[0] + 4) - pos[0]) <= radX && Math.abs((we[1] + 4) - pos[1]) <= radY)
+	// 				return (l.attach && getAttach) ? l.attach : l;
+	// 			let ws = l.start;
+	// 			if (Math.abs((ws[0] + 4) - pos[0]) <= radX && Math.abs((ws[1] + 4) - pos[1]) <= radY)
+	// 				return (l.attach && getAttach) ? l.attach : l;
+	// 		}
+	// 	}
+	// 	return null;
+	// }
+
+	static get(pos = _mouse.pos, self = null, getAttach = false) {
+		for (let i = _nodes.length - 1; i >= 0; i--) {
 			const g = _nodes[i];
-			if (g.handles === undefined || !g.handles)
-				continue;
-			for (const l of g.handles) {
-				if (self === l) continue;
-				let we = toWorld(l.end);
-				if (Math.abs((we[0] + 4) - pos[0]) <= 16 && Math.abs((we[1] + 4) - pos[1]) <= 16)
-					return l.attach ? l.attach : l;
-				let ws = toWorld(l.start);
-				if (Math.abs((ws[0] + 4) - pos[0]) <= 16 && Math.abs((ws[1] + 4) - pos[1]) <= 16)
-					return l.attach ? l.attach : l;
+			if (!g.handles) continue;
+
+			const radius = 16 * _scale;
+
+			for (const h of g.handles) {
+				if (self === h) continue;
+
+				const endScreen = toWorld(h.end);
+				if (Math.abs(endScreen[0] - pos[0]) <= radius &&
+					Math.abs(endScreen[1] - pos[1]) <= radius)
+					return (h.attach && getAttach) ? h.attach : h;
+
+				const startScreen = toWorld(h.start);
+				if (Math.abs(startScreen[0] - pos[0]) <= radius &&
+					Math.abs(startScreen[1] - pos[1]) <= radius)
+					return (h.attach && getAttach) ? h.attach : h;
 			}
 		}
 		return null;

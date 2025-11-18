@@ -1,6 +1,7 @@
 class Mouse{
 	constructor(pos) {
 		this.pos = pos;
+		this.world = pos;
 		this.delta = [0, 0];
 		this.clickDur = 0;
 		this.clickStart = 0;
@@ -8,6 +9,7 @@ class Mouse{
 		this.clicked = false;
 		this.dbClicked = false;
 		this.pressed = false;
+		this.dragging = false;
 	}
 }
 
@@ -32,8 +34,8 @@ window.addEventListener("contextmenu", (e) => {
 window.addEventListener("mousedown", (e) => {
 	if (_paused)
 		return;
-	if (_renameNode) Node.setProperty();
 	_mouse.pos = getMousePosCanvas(e);
+	if (_renameNode) Node.setProperty();
 	if (_selBox.nodes && _input.keys['alt'])
 		_selBox.dupplicateNodes([-20, -20]);
 	else if (_hovElement) {
@@ -49,8 +51,10 @@ window.addEventListener("mousedown", (e) => {
 	}
 	if (!_selElement && !_selHandle && !_menu.contextMenuActive && e.button === 0)
 		_selBox.init();
-	else if (_input.keys['shift'] && _hovElement && e.button === 0)
-		_selBox.tryPush(_hovElement);
+	else if ((_input.keys['shift'] || _input.keys['meta']) && _hovElement && e.button === 0) {
+		if (!_selBox.tryClearNode(_hovElement))
+			_selBox.tryPush(_hovElement);
+	}
 	_mouse.pressed = true;
 	_mouse.clickStart = performance.now();
 	_mouse.dbClicked = _mouse.clicked;
@@ -64,15 +68,19 @@ window.addEventListener("mouseup", (e) => {
 	_mouse.clickDur = performance.now() - _mouse.clickStart;
 	let wasClick = _mouse.clickDur < 200;
 
-	if (wasClick)
+	if (wasClick) {
 		_au.playSound(_au.click);
+	}
 	if (wasClick && e.button !== 2 && !_input.keys['alt']) {
 		let hov = _hovElement;
 		if (hov) {
 			_menu.toggleContextMenu(false);
 			if (!_input.keys['shift']) {
-				if (hov.type === "BOOL")
-					hov.setOutput(!hov.output ? 1 : 0);
+				if (hov.type === "BOOL") {
+					hov.setOutput(hov.output ? 0 : 1);
+					for (const n of _selBox.nodes)
+						if (n.type === 'BOOL') n.setOutput(n.output ? 0 : 1);
+				}
 				else if (hov.onInspect !== undefined)
 					hov.onInspect();
 				else if (_mouse.dbClicked && hov)
@@ -84,14 +92,16 @@ window.addEventListener("mouseup", (e) => {
 	}
 	_selBox.active = false;
 	if (_selHandle && !wasClick) {
-		let other = Handle.get(_selHandle.end, _selHandle);
+		var other = _hovHandle;
+		if (!_hovHandle || !_selHandle.tryAttachTo(_hovHandle))
+			other = Handle.get(_mouse.pos, _selHandle);
 		if (!other || !_selHandle.tryAttachTo(other)) {
 			_menu.toggleContextMenu([_mouse.pos[0] - 60, _mouse.pos[1]]);
 			_hangHandle = _selHandle;
 		}
 	}
-	_selElement = null;
 	_selHandle = null;
+	_selElement = null;
 	_mouse.pressed = false;
 	_mouse.dbClicked = false;
 });
@@ -99,13 +109,33 @@ window.addEventListener("mouseup", (e) => {
 function setHoverElements() {
 	_hovElement = Node.get();
 	if (_hovLine) _hovHandle = _hovLine;
-	else _hovHandle = Handle.get(_mouse.pos, _selHandle);
+	else _hovHandle = Handle.get(_mouse.pos, _selHandle, false);
 	if (_hovElement && _menu.contextMenuActive && _mouse.pressed)
 		_menu.toggleContextMenu(null);
 	if (!_selBox.active && _mouse.pressed && !_selHandle)
 		_selBox.moveNodes();
-	if (_selHandle)
-		_selHandle.place(_selHandle.start, [_mouse.pos[0] + _camera.scroll[0], _mouse.pos[1] + _camera.scroll[1]]);
+	if (_selHandle) {
+		markObstaclesDirty();
+		const other = Handle.get(_mouse.pos, _selHandle, false);
+		if (!other || !_selHandle.canAttachTo(other))
+			_selHandle.place(_selHandle.start, _mouse.world);
+		else _selHandle.place(_selHandle.start, other.start);
+	}
+	if (_renameNode && _renameProperty === 'output' && _mouse.pressed) {
+		const DEC = 3;
+		const val = Number(_renameNode.output) || 0;
+		const speed = (Math.min(_renameNode.maxValue, 100) - Math.max(_renameNode.minValue, -100)) * .005;
+		var add = _mouse.delta[0] * speed;
+		if (_input.keys['shift']) add = _mouse.delta[0];
+		const newVal = val + add;
+		var nv = Number(newVal.toFixed(DEC));
+		nv = clamp(nv, _renameNode.minValue, _renameNode.maxValue);
+		_renameNode[_renameProperty] = nv;
+		const prv = _renameNode;
+		Node.setProperty();
+		_renameNode = prv;
+		_renameAll = false;
+	}
 	else if (_selElement) {
 		const next = [_selElement.pos[0] + _mouse.delta[0], _selElement.pos[1] + _mouse.delta[1]];
 		_selElement.place(next);
@@ -118,6 +148,7 @@ window.addEventListener("mousemove", (e) => {
 	_mouse.delta[1] = p[1] - _mouse.pos[1];
 	_mouse.moved = true;
 	_mouse.pos = p;
+	_mouse.world = [p[0] + _camera.scroll[0], p[1] + _camera.scroll[1]];
 	if (_paused)
 		return;
 	setHoverElements();
