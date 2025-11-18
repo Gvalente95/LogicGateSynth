@@ -1,7 +1,7 @@
 class ValNode extends Node{
 	constructor(type, pos) {
 		super(pos, ValNode.getSize(type));
-		this.color = "rgba(105, 189, 63, 1)";
+		this.color = "rgba(231, 233, 244, 1)";
 		this.output = 0;
 		this.initType(type);
 		this.initHandles(this.pos, this.size);

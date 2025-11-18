@@ -149,7 +149,7 @@ class AudioNode extends Node {
 }
 
 function getPiano(includeMap = null, excludeMap = []) {
-	const wSPread = 250;
+	const wSPread = 225;
 	const hSpread = 100;
 
 	const zoneX = 1000;
@@ -240,7 +240,8 @@ function getPiano(includeMap = null, excludeMap = []) {
 	const vpx = baseP[0] - 540; vpy = baseP[1] - 600;
 	const val = initAndAdd(ValNode, 'NUM', [vpx, vpy - 350]); val.setOutput(10); val.setName('SPD'); val.hideProperty('type'); val.minValue = 0;
 	const arp = initAndAdd(ValNode, 'BOOL', [vpx + 200, vpy - 400]);
-	arp.setName('ARP');	
+	setNameAndHideType(arp, 'ARP');
+
 	const spl = initAndAdd(SplitNode, 'SPLIT4', [vpx - 200, vpy - 100]);
 	const not = initAndAdd(GateNode, 'NOT', [vpx - 200, vpy + 250], spl);
 	const sub = initAndAdd(OppNode, 'SUB', [vpx - 200, vpy + 400], not)

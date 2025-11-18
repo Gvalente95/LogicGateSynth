@@ -16,7 +16,7 @@ function initAndAdd(elType, type, pos, output = null, input = null, system = nul
 }
 
 var bgrImg = new Image(_canvas.width * 2, _canvas.height * 2);
-bgrImg.src = "../ressources/img/BGR1.png";
+bgrImg.src = "../ressources/img/BGR0.jpg";
 bgrImg = null;
 
 function initMem1(distBetween, pos = [_canvas.width / 2, _canvas.height / 2]) {

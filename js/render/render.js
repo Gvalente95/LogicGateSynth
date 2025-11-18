@@ -99,7 +99,8 @@ function render() {
 	if (_NcStack.length) renderNcUi();
 	else {
 		if (bgrImg) ctx.drawImage(bgrImg, -_canvas.width * .2 - _camera.scroll[0] * .1, -_canvas.height * .2 - _camera.scroll[1] * .1, _canvas.width * 1.4, _canvas.height * 1.4);
-		else fillGrid();
+		// else if (1) fillGrid();
+		else if (1) ctx.fillRect(0, 0, _canvas.width, _canvas.height);
 		renderNodes();
 	}
 	if (_selBox.active)
@@ -109,9 +110,10 @@ function render() {
 		var n = _hovElement || _hovHandle;
 		if (n) renderDebugElement(n, toScrn([n.pos[0] + n.size[0] + 40, n.pos[1]]));
 	}
-	drawText(ctx, [_canvas.width - 50, _canvas.height - 50], "FPS: " + _fps, 'grey');
+	drawText(ctx, [_canvas.width - 50, _canvas.height - 30], "FPS: " + _fps, 'grey');
 	if (_debug) {
 		drawText(ctx, [500, 500], `MOUSE P${_mouse.pos} W${_mouse.world} S${_mouse.screen}`, 'white', 'black', 24, true);
 	}
+	ctx.fillStyle = _bgrClr;
 	// drawBezierLine([0, 0], [800, 800], [0, 800]);
 }
