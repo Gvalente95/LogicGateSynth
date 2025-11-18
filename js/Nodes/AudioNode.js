@@ -144,15 +144,32 @@ class AudioNode extends Node {
 	}
 
 	render(ctx, pos = this.pos) {
-		super.render(ctx, toWorld(pos));
+		super.render(ctx, toScrn(pos));
 	}
 }
 
 function getPiano(includeMap = null, excludeMap = []) {
+	const wSPread = 250;
+	const hSpread = 100;
+
+	const zoneX = 1000;
+	const notesP = [zoneX, 50];
+	const pitchP = [zoneX - 20, notesP[1] + hSpread];
+	const paramP = [zoneX - 40, pitchP[1] + hSpread]
+	const arpP = [zoneX + 20, paramP[1] + hSpread];
+	const splitP = [zoneX, arpP[1] + 150];
+	const scaleP = [zoneX, splitP[1] + 450];
+	const oscP = [zoneX, scaleP[1] + hSpread];
+	const addP = [zoneX, oscP[1] + 300];
+	const orrP = [zoneX + 40, addP[1] + hSpread];
+	const screenP = [50, 1000];
+
+
+
 	if (!includeMap) includeMap = ["C", "D", "E", "F", "G", "A", "B", "C2"];
-	const notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B", "C2"];
-	const baseP = [1000, _canvas.height / 2 + 230];
-	var pos = [...baseP];
+	const base = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+	const notes = [...base,...base.map(n => n + "2")];
+	const baseP = [1000, _canvas.height / 2 + 300];
 	const validNotes = [];
 	for (const n of notes) {
 		if (includeMap.length && !includeMap.includes(n)) continue;
@@ -164,64 +181,73 @@ function getPiano(includeMap = null, excludeMap = []) {
 	const limits = { 'FREQ': [40, 4000], 'RATE': [0, 2], 'LFO': [-200, 200], 'DETUNE': [-64, 64], 'ATTACK': [0, 10], 'RELEASE': [0, 10], 'SUSTAIN': [0, 10]};
 
 	const paramNames = Object.keys(params);
-	var splitPos = [pos[0] - 80, pos[1] - 800];
-	var splitters = [];
 	var am = ([2, 4, 8].find(n => notesLen <= n) || 16);
-	for (const p of paramNames) {
-		const n = initAndAdd(ValNode, 'NUM', splitPos);
-		n.minValue = limits[p][0]; n.maxValue = limits[p][1];
-		const splitter = initAndAdd(SplitNode, "SPLIT" + am, [splitPos[0] + 50, splitPos[1] + n.size[1] + 100]);
-		splitPos[0] += splitter.size[0] + 150;
-		n.output = params[p];
-		n.setName(p);
-		n.tryAttachToElement(splitter, n.handles[0]);
+
+	var splitters = [];
+	for (let i = 0; i < paramNames.length; i++) {
+		const p = paramNames[i];
+		const spreadX = wSPread * i;
+		const paramNode = initAndAdd(ValNode, 'NUM', [paramP[0] + spreadX, paramP[1]]);
+		paramNode.minValue = limits[p][0]; paramNode.maxValue = limits[p][1];
+		setNameAndHideType(paramNode, p, params[p]);
+		paramNode.hideProperty('type');
+
+		const splitter = initAndAdd(SplitNode, "SPLIT" + am, [splitP[0] + spreadX, splitP[1]]);
+		paramNode.tryAttachToElement(splitter, paramNode.handles[0]);
 		splitters.push(splitter);
 	}
 
-	const osc = [];
+	const auNodes = [];
 	const keys = [];
+	const arpTriggs = [];
+	var posX = 0;
 	for (let i = 0; i < notes.length; i++) {
 		const note = notes[i];
 		if (!validNotes.includes(note)) continue;
-		const n = initAndAdd(AudioNode, note, pos);
-		osc.push(n);
-		n.place();
-		var detP = [pos[0], pos[1] + 275];
-		const detScale = initAndAdd(OppNode, 'ADD', [detP[0], detP[1]]);
-		var det = initAndAdd(ValNode, "NUM", [detP[0], detP[1] + 80]);
-		det.output = i;
-		n.tryAttachToElement(detScale, n.handles[3]);
-		detScale.tryAttachToElement(det);
-		detScale.tryAttachToElement(splitters[3]);
+		const osc = initAndAdd(AudioNode, note, [oscP[0] + posX, oscP[1]]);
+		auNodes.push(osc);
+		osc.place();
+		const detAdder = initAndAdd(OppNode, 'ADD', [addP[0] + posX, addP[1]]);
+		const detuneNode = initAndAdd(ValNode, "NUM", [pitchP[0] + posX, pitchP[1]]);
+		setNameAndHideType(detuneNode, 'Pitch', i);
+		osc.tryAttachToElement(detAdder, osc.handles[3]);
+		detAdder.tryAttachToElement(detuneNode);
+		detAdder.tryAttachToElement(splitters[3]);
 
 		for (let v = 0; v < paramNames.length; v++){
-			const key = paramNames[v];
-			if (key === 'FREQ') {
-				const b = initAndAdd(ValNode, 'BOOL', [pos[0] - 50, splitPos[1] - 150]);
-				b.setOutput(0);
-				b.setName(note);
-				keys.push(b);
-				const scale = initAndAdd(OppNode, 'SCALE', [pos[0], pos[1] - 100]);
+			const param = paramNames[v];
+			if (param === 'FREQ') {
+				const scale = initAndAdd(OppNode, 'SCALE', [scaleP[0] + posX, scaleP[1]]);
 				scale.tryAttachToElement(splitters[v]);
-				scale.tryAttachToElement(b);
-				n.tryAttachToElement(scale, n.handles[0]);
+				osc.tryAttachToElement(scale, osc.handles[0]);
+
+				const noteTrigger = initAndAdd(ValNode, 'BOOL', [notesP[0] + posX, notesP[1]]);
+				setNameAndHideType(noteTrigger, note, 0);
+
+				const orr = initAndAdd(GateNode, 'OR', [orrP[0] + posX, orrP[1]], null, scale);
+				orr.tryAttachToElement(noteTrigger, orr.handles[0]);
+				keys.push(orr);
+
+				const arpTrigger = initAndAdd(ValNode, 'BOOL', [arpP[0] + posX, arpP[1]], null, scale);
+				setNameAndHideType(arpTrigger, "ARP_" + note, 1);
+				arpTriggs.push(arpTrigger);
 			}
-			else n.tryAttachToElement(splitters[v], n.handles[v]);
+			else osc.tryAttachToElement(splitters[v], osc.handles[v]);
 		}
-		pos[0] += n.size[0] + 100;
+		posX += wSPread;
 	}
 
-	const vpx = baseP[0] - 540; vpy = baseP[1] - 810;
-	const val = initAndAdd(ValNode, 'NUM', [vpx, vpy - 100]); val.setOutput(10); val.setName('SPD'); val.hideProperty('type'); val.minValue = 0;
-	const arp = initAndAdd(ValNode, 'BOOL', [vpx + 200, vpy - 138]);
+	const vpx = baseP[0] - 540; vpy = baseP[1] - 600;
+	const val = initAndAdd(ValNode, 'NUM', [vpx, vpy - 350]); val.setOutput(10); val.setName('SPD'); val.hideProperty('type'); val.minValue = 0;
+	const arp = initAndAdd(ValNode, 'BOOL', [vpx + 200, vpy - 400]);
 	arp.setName('ARP');	
-	const spl = initAndAdd(SplitNode, 'SPLIT4', [vpx - 300, vpy - 100]);
-	const not = initAndAdd(GateNode, 'NOT', [vpx - 400, vpy + 150], spl);
-	const sub = initAndAdd(OppNode, 'SUB', [vpx - 400, vpy + 300], not)
+	const spl = initAndAdd(SplitNode, 'SPLIT4', [vpx - 200, vpy - 100]);
+	const not = initAndAdd(GateNode, 'NOT', [vpx - 200, vpy + 250], spl);
+	const sub = initAndAdd(OppNode, 'SUB', [vpx - 200, vpy + 400], not)
 	const mult = initAndAdd(OppNode, 'SCALE', [vpx + 200, vpy], val);
 	mult.tryAttachToOutput(spl);
 	spl.tryAttachToElement(mult, spl.handles[0]);
-	const sccl = initAndAdd(OppNode, 'SCALE', [vpx - 180, vpy + 80], null, sub);
+	const sccl = initAndAdd(OppNode, 'SCALE', [vpx - 180, vpy + 120], null, sub);
 	sccl.tryAttachToOutput(spl);
 	arp.tryAttachToInput(spl);
 
@@ -229,27 +255,37 @@ function getPiano(includeMap = null, excludeMap = []) {
 	const incr = initAndAdd(ValNode, 'INCR', [px, py], null, sccl);
 
 	const ppx = px - 200, ppy = py - 71;
-	const spd = initAndAdd(ValNode, 'NUM', [ppx, ppy], mult, incr);
-	const start = initAndAdd(ValNode, 'NUM', [ppx, ppy + 100], null, incr); start.setOutput(0); start.setName('START'); start.hideProperty('type');
-	const end = initAndAdd(ValNode, 'NUM', [ppx, ppy + 100 * 2], null, incr); end.setOutput(notesLen - 1); end.setName('END'); end.hideProperty('type');
 
-	const spx = px - 450, spy = ppy + 550;
+	const spd = initAndAdd(ValNode, 'NUM', [ppx, ppy], mult, incr);
+	const start = initAndAdd(ValNode, 'NUM', [ppx - 50, ppy - 300], null, incr);
+	setNameAndHideType(start, 'START', 0); start.minValue = 0; start.maxValue = notesLen;
+	const end = initAndAdd(ValNode, 'NUM', [ppx + 200, ppy - 300], null, incr); 
+	setNameAndHideType(end, 'END', notesLen - 1); end.minValue = 0; end.maxValue = notesLen;
+
+	const spx = px - 280, spy = ppy + 550;
 	const selector = initAndAdd(SelNode, 'ARP' + am, [spx - 160, spy], sub);
-	const SCREEN = initAndAdd(DisplayNode, 'SCREEN' + am, [baseP[0] + 1600, baseP[1] - 450]);
+	var SCREEN = initAndAdd(DisplayNode, 'SCREEN' + am, [0, 0]);
 	for (let i = 0; i < notesLen; i++){
 		const ppp = [spx + 500, spy + 100 * (i + 2 - am / 2)];
-		const val = initAndAdd(ValNode, 'NUM', ppp);
-		const or = initAndAdd(GateNode, 'OR', [ppp[0] - 140, ppp[1]]);
-		or.tryAttachToElement(val);
-		val.setName(validNotes[i]);
-		val.hideProperty('type');
+
+		const and = initAndAdd(GateNode, 'AND', [ppp[0] - 140, ppp[1]], null, keys[i]);
+		and.tryAttachToOutput(arpTriggs[i]);
+		setNameAndHideType(and, validNotes[i]);
+
 		const split = initAndAdd(SplitNode, 'SPLIT4', [ppp[0] - 450 + (120 * (i % 2 !== 0)), ppp[1]]);
 		selector.tryAttachToElement(split, selector.handles[i + 1]);
-		split.tryAttachToElement(or, split.handles[0]);
+		split.tryAttachToElement(and, split.handles[0]);
 		keys[i].tryAttachToElement(val);
-		osc[i].tryAttachToInput(SCREEN);
+		auNodes[i].tryAttachToInput(SCREEN);
 	}
-	SCREEN.place();
+	SCREEN.place([_canvas.width - SCREEN.size[0] - 50, screenP[1]]);
 	_renameNode = null;
-	setTimeout(() => markObstaclesDirty(), 200);
+	setTimeout(() => markObstaclesDirty(), 400);
+}
+
+
+function setNameAndHideType(node, name, output = null) {
+	node.setName(name);
+	node.hideProperty('type');
+	if (output) node.output = output;
 }

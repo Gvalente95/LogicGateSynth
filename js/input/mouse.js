@@ -2,6 +2,7 @@ class Mouse{
 	constructor(pos) {
 		this.pos = pos;
 		this.world = pos;
+		this.screen = pos;
 		this.delta = [0, 0];
 		this.clickDur = 0;
 		this.clickStart = 0;
@@ -10,6 +11,30 @@ class Mouse{
 		this.dbClicked = false;
 		this.pressed = false;
 		this.dragging = false;
+	}
+
+	update() {
+		if (this.pressed) {
+			const spd = 30; const brd = 10;
+			var dx = 0, dy = 0;
+			dx = (-(this.pos[0] <= brd) + (this.pos[0] >= _canvas.width - brd)) * spd;
+			dy = (-(this.pos[1] <= brd) + (this.pos[1] >= _canvas.height - brd)) * spd;
+			if (dx || dy) _camera.move(dx, dy);
+		}
+	}
+
+	updatePos(p = this.pos) {
+		if (p[0] === this.pos[0] && p[1] === this.pos[1]) {
+			this.world = toWorld(this.pos);
+			this.screen = toScrn(this.pos);
+			return;
+		}
+		this.delta[0] = p[0] - this.pos[0];
+		this.delta[1] = p[1] - this.pos[1];
+		this.world = toWorld(this.pos);
+		this.screen = toScrn(this.pos);
+		this.pos = p;
+		_mouse.moved = this.delta[0] || this.delta[1];
 	}
 }
 
@@ -144,11 +169,7 @@ function setHoverElements() {
 
 window.addEventListener("mousemove", (e) => {
 	const p = getMousePosCanvas(e);
-	_mouse.delta[0] = p[0] - _mouse.pos[0];
-	_mouse.delta[1] = p[1] - _mouse.pos[1];
-	_mouse.moved = true;
-	_mouse.pos = p;
-	_mouse.world = [p[0] + _camera.scroll[0], p[1] + _camera.scroll[1]];
+	_mouse.updatePos(p);
 	if (_paused)
 		return;
 	setHoverElements();

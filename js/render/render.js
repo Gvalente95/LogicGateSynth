@@ -58,14 +58,14 @@ function renderNcUi() {
 		var end = [h.isInput ? 0 : _canvas.width, h.end[1]];
 		var clr = "rgba(255, 255, 255, 0.05)";
 		if (n && n.output) clr = "rgba(255, 255, 255, 1)";
-		drawLine(ctx, toWorld(start), toWorld(end), clr, 8, 0);
+		drawLine(ctx, toScrn(start), toScrn(end), clr, 8, 0);
 	}
 	for (const h of nc.innerOutHandles) {
 		var start = h.start;
 		var end = [h.isInput ? 0 : _canvas.width, h.end[1]];
 		var clr = "rgba(49, 184, 45, 0.05)";
 		if (h.parent.output) clr = "rgba(255, 255, 255, 1)";
-		drawLine(ctx, toWorld(start), toWorld(end), clr, 8, 0);
+		drawLine(ctx, toScrn(start), toScrn(end), clr, 8, 0);
 	}
 	for (const s of _nodes) s.render(ctx);
 }
@@ -107,8 +107,11 @@ function render() {
 	_menu.render(ctx);
 	if (_debug) {
 		var n = _hovElement || _hovHandle;
-		if (n) renderDebugElement(n, toWorld([n.pos[0] + n.size[0] + 40, n.pos[1]]));
+		if (n) renderDebugElement(n, toScrn([n.pos[0] + n.size[0] + 40, n.pos[1]]));
 	}
 	drawText(ctx, [_canvas.width - 50, _canvas.height - 50], "FPS: " + _fps, 'grey');
+	if (_debug) {
+		drawText(ctx, [500, 500], `MOUSE P${_mouse.pos} W${_mouse.world} S${_mouse.screen}`, 'white', 'black', 24, true);
+	}
 	// drawBezierLine([0, 0], [800, 800], [0, 800]);
 }

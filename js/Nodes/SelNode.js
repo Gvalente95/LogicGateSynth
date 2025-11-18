@@ -74,6 +74,6 @@ class SelNode extends Node{
 	}
 
 	render(ctx, pos = this.pos, size = this.size) {
-		super.render(ctx, toWorld(pos), size);
+		super.render(ctx, toScrn(pos), size);
 	}
 }

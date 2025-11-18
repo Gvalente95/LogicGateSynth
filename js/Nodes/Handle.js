@@ -53,8 +53,8 @@ class Handle {
 			color = setAlpha(color, ".4");
 			hasOutput = false;
 		}
-		let start = toWorld(this.start);
-		let end = toWorld(this.end);
+		let start = toScrn(this.start);
+		let end = toScrn(this.end);
 		if (this.isInput) {
 			var tmp = start;
 			start = end;
@@ -63,7 +63,7 @@ class Handle {
 		var mouseAt = false;
 		var shouldCheck = true; // = _mouse.moved
 		if (this === _selHandle && _hovHandle && this.canAttachTo(_hovHandle))
-			mouseAt = drawLine(ctx, start, toWorld(_hovHandle.end), color, width, 0, shouldCheck, hasOutput);
+			mouseAt = drawLine(ctx, start, toScrn(_hovHandle.end), color, width, 0, shouldCheck, hasOutput);
 		else if (!(this === _hovHandle && _selHandle && _selHandle.canAttachTo(this))){
 			let handleSize = this.attach !== null ? 0 : (_hovHandle === this && !_selHandle) ? 3 : 2;
 			mouseAt = drawLine(ctx, start, end, color, width, handleSize, shouldCheck, hasOutput);
@@ -133,12 +133,12 @@ class Handle {
 			for (const h of g.handles) {
 				if (self === h) continue;
 
-				const endScreen = toWorld(h.end);
+				const endScreen = toScrn(h.end);
 				if (Math.abs(endScreen[0] - pos[0]) <= radius &&
 					Math.abs(endScreen[1] - pos[1]) <= radius)
 					return (h.attach && getAttach) ? h.attach : h;
 
-				const startScreen = toWorld(h.start);
+				const startScreen = toScrn(h.start);
 				if (Math.abs(startScreen[0] - pos[0]) <= radius &&
 					Math.abs(startScreen[1] - pos[1]) <= radius)
 					return (h.attach && getAttach) ? h.attach : h;

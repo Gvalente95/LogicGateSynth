@@ -176,7 +176,7 @@ class SelBox{
 		for (const e of _nodes) {
 			if (e.constructor.name === Handle)
 				continue;
-			if (rectCollide(toWorld(e.pos), e.size, [startX, startY], [w, h])) {
+			if (rectCollide(toScrn(e.pos), e.size, [startX, startY], [w, h])) {
 				if (this.tryPush(e)) _au.playSound(_au.click, .5);
 			}
 			else if (!_input.keys['shift']) this.tryClearNode(e) && _au.playSound(_au.click, .3);

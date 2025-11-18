@@ -45,6 +45,6 @@ class GateNode extends Node{
 	}
 
 	render(ctx) {
-		super.render(ctx, toWorld(this.pos), this.size, this === _hovElement || this === _selElement ? "red" : this.color);
+		super.render(ctx, toScrn(this.pos), this.size, this === _hovElement || this === _selElement ? "red" : this.color);
 	}
 }

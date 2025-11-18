@@ -32,7 +32,8 @@ function initMem1(distBetween, pos = [_canvas.width / 2, _canvas.height / 2]) {
 }
 
 function init() {
-	setTimeout(() => getPiano(['C', 'D', 'E', 'G', 'C2']), 50);
+	// setTimeout(() => getPiano(['C', 'D', 'E', 'G', 'B', 'C2', 'D2', 'G2']), 50);
+	setTimeout(() => getPiano(['E', 'G', 'B', 'C2']), 50);
 
 	// initMem1(400);
 	update();

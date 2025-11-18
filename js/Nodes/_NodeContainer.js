@@ -276,7 +276,7 @@ class NodeContainer extends Node{
 
 
 	render(ctx, color = this.color, error = false) {
-		const pos = toWorld(this.pos);
+		const pos = toScrn(this.pos);
 		super.render(ctx, pos, this.size, color, error);
 		if (pointInRect(_mouse.pos, [pos[0], pos[1] - 40], [this.size[0], 40])) {
 			document.body.style.cursor = "Text";

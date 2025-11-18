@@ -20,11 +20,9 @@ function updateScreenObstacles() {
 	_obstaclesDirty = false;
 }
 
-var _fps = 0;
-var _tick = 0;
-var _timeSinceFrame = 0;
-var _now = performance.now();
-function update() {
+var _fps = 0; var _tick = 0;
+var _timeSinceFrame = 0; var _now = performance.now();
+function updateTime() {
 	_now = performance.now();
 	_tick++;
 	if (_now - _timeSinceFrame >= 1000) {
@@ -32,12 +30,13 @@ function update() {
 		_tick = 0;
 		_timeSinceFrame = _now;
 	}
-
 	_frame++;
-	
-	for (const n of _nodes) {
-		n.update();
-	}
+}
+
+function update() {
+	updateTime();
+	_mouse.update();
+	for (const n of _nodes) n.update();
 	updateScreenObstacles();
 	render();
 	_mouse.moved = false;

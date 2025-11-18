@@ -128,9 +128,9 @@ class Node{
 	}
 
 	renderHandles(ctx) {
-		const p = toWorld(this.pos); const s = this.size; const c = this.color;
+		const p = toScrn(this.pos); const s = this.size; const c = this.color;
 		for (const h of this.handles) {
-			let dEnd = toWorld(h.start);
+			let dEnd = toScrn(h.start);
 			let dStart = [p[0], dEnd[1]];
 			if (dEnd[1] < p[1]) dStart = [dEnd[0], p[1]];
 			else if (dEnd[1] > p[1] + s[1]) dStart = [dEnd[0], p[1] + s[1]];
@@ -214,7 +214,7 @@ class Node{
 		for (let i = _nodes.length - 1; i >= 0; i--) {
 			const g = _nodes[i];
 			if (!g.active || g === self) continue;
-			let wp = toWorld(g.pos);
+			let wp = toScrn(g.pos);
 			if (Math.abs((wp[0] + g.size[0] / 2) - pos[0]) <= g.size[0] / 2 &&
 				Math.abs((wp[1] + g.size[1] / 2) - pos[1]) <= g.size[1] / 2)
 				return g;

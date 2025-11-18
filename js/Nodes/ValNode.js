@@ -127,9 +127,9 @@ class ValNode extends Node{
 	}
 
 	render(ctx, pos = this.pos, size = this.size) {
-		super.render(ctx, toWorld(pos), size);
+		super.render(ctx, toScrn(pos), size);
 		if (_selBox.active) return;
-		if (pointInRect(_mouse.pos, toWorld([pos[0] + size[0] * .3, pos[1] + size[1] * .2]), [size[0] * .4, size[1] * .4])) {
+		if (pointInRect(_mouse.pos, toScrn([pos[0] + size[0] * .3, pos[1] + size[1] * .2]), [size[0] * .4, size[1] * .4])) {
 			if (this.type === 'NUM') {
 				document.body.style.cursor = "Text";
 				if (_mouse.clicked)
@@ -138,7 +138,7 @@ class ValNode extends Node{
 			else if (this.type === 'INCR' && _mouse.clicked)
 				this.output = 0;
 		}
-		else if (this.type === 'BOOL' && pointInRect(_mouse.pos, toWorld([pos[0], pos[1] - 40]), [size[0], 40])) {
+		else if (this.type === 'BOOL' && pointInRect(_mouse.pos, toScrn([pos[0], pos[1] - 40]), [size[0], 40])) {
 			document.body.style.cursor = "Text";
 			if (_mouse.clicked) {
 				if (this.name === undefined) this.setName('BOOL');
