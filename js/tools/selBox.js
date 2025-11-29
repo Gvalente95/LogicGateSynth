@@ -97,7 +97,6 @@ class SelBox{
 		this.nodes = [];
 		if (_selElement){
 			_selElement.onRemove();
-			len++;
 			_selElement = null;
 		}
 		log("DELETED " + " NODES[" + nLen + "] LINES[" + hLen + "]", this);

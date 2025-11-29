@@ -198,6 +198,7 @@ document.addEventListener(
   (e) => {
     e.preventDefault();
     const now = Date.now();
+    _hovElement = Node.get(e.clientX, e.clientY);
     if (e.touches.length === 1 && !isTwoFingerTouch) {
       if (now - lastTouchTime < 300) {
         isDoubleTouch = true;
@@ -230,7 +231,7 @@ document.addEventListener(
       if (lastY !== null) {
         const dx = (currentX - lastX) * 2;
         const dy = (currentY - lastY) * 2;
-        if (dx || dy) _camera.move(dx, dy);
+        if (dx || dy) _camera.move(-dx, -dy);
       }
       lastY = currentY;
       lastX = currentX;
@@ -244,7 +245,13 @@ document.addEventListener(
   (e) => {
     e.preventDefault();
     if (e.touches.length === 0) {
-      if (!isTwoFingerTouch) simulateMouseEvent(e, "mouseup");
+      if (!isTwoFingerTouch) {
+        simulateMouseEvent(e, "mouseup");
+      }
+      if (isDoubleTouch) {
+        if (_hovElement) _selBox.tryPush(_hovElement);
+        _menu.toggleContextMenu(_mouse.pos, _hovElement);
+      }
       isDoubleTouch = false;
       isTwoFingerTouch = false;
       lastY = null;
