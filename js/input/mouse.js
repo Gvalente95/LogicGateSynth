@@ -228,8 +228,8 @@ document.addEventListener(
       const currentX = (touch1.clientX + touch2.clientX) / 2;
 
       if (lastY !== null) {
-        const dx = (currentY - lastY) * 2;
-        const dy = (currentX - lastX) * 2;
+        const dx = (currentX - lastX) * 2;
+        const dy = (currentY - lastY) * 2;
         if (dx || dy) _camera.move(dx, dy);
       }
       lastY = currentY;
