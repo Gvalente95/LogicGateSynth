@@ -14,7 +14,7 @@ class Mouse{
 	}
 
 	update() {
-		if (this.pressed) {
+		if (this.pressed && !_renameScroll) {
 			const spd = 30; const brd = 10;
 			var dx = 0, dy = 0;
 			dx = (-(this.pos[0] <= brd) + (this.pos[0] >= _canvas.width - brd)) * spd;
@@ -35,6 +35,14 @@ class Mouse{
 		this.screen = toScrn(this.pos);
 		this.pos = p;
 		_mouse.moved = this.delta[0] || this.delta[1];
+	}
+
+	reset() {
+		if (this.moved) {
+			this.delta = [0, 0];
+			this.moved = false;
+		}
+		this.clicked = false;
 	}
 }
 
@@ -114,6 +122,7 @@ window.addEventListener("mouseup", (e) => {
 		}
 		else if (_menu.contextMenuActive)
 			_menu.toggleContextMenu(false);
+		// else _menu.toggleContextMenu(_mouse.pos);
 	}
 	_selBox.active = false;
 	if (_selHandle && !wasClick) {
@@ -127,14 +136,49 @@ window.addEventListener("mouseup", (e) => {
 	}
 	_selHandle = null;
 	_selElement = null;
+	if (_renameScroll) {
+		Node.setProperty();
+		_renameScroll = false;
+	}
 	_mouse.pressed = false;
 	_mouse.dbClicked = false;
 });
 
+function dragSelOutput() {
+	const n = _renameNode;
+	const p = _renameProperty;
+	var newVal;
+	if (n.isFloat) {
+		const val = Number(n.output) || 0;
+		const speed = (Math.min(n.maxValue, 100) - Math.max(n.minValue, -100)) * .005;
+		var add = _mouse.delta[0] * speed;
+		newVal = val + add;
+		n[p] = clamp(Number(newVal.toFixed(3)), n.minValue, n.maxValue);
+	}
+	else {
+		if (!_mouse.delta[0]) return;
+		let step = (n.maxValue - n.minValue) * 0.01;
+		let direction = Math.sign(_mouse.delta[0]);
+		let amount = Math.max(1, Math.round(step));
+		let add = direction * amount;
+		let val = Number(n[p]) || 0;
+		let newVal = val + add;
+		n[p] = clamp(newVal, n.minValue, n.maxValue);
+	}
+	Node.setProperty();
+	_renameNode = n;
+	_renameAll = false;
+	_renameScroll = true;
+}
+
 function setHoverElements() {
 	_hovElement = Node.get();
-	if (_hovLine) _hovHandle = _hovLine;
-	else _hovHandle = Handle.get(_mouse.pos, _selHandle, false);
+	if (_renameHov) _hovHandle = null;
+	else {
+		if (_hovLine) _hovHandle = _hovLine;
+		else _hovHandle = Handle.get(_mouse.pos, _selHandle, false);
+	}
+	_renameHov = null;
 	if (_hovElement && _menu.contextMenuActive && _mouse.pressed)
 		_menu.toggleContextMenu(null);
 	if (!_selBox.active && _mouse.pressed && !_selHandle)
@@ -146,21 +190,8 @@ function setHoverElements() {
 			_selHandle.place(_selHandle.start, _mouse.world);
 		else _selHandle.place(_selHandle.start, other.start);
 	}
-	if (_renameNode && _renameProperty === 'output' && _mouse.pressed) {
-		const DEC = 3;
-		const val = Number(_renameNode.output) || 0;
-		const speed = (Math.min(_renameNode.maxValue, 100) - Math.max(_renameNode.minValue, -100)) * .005;
-		var add = _mouse.delta[0] * speed;
-		if (_input.keys['shift']) add = _mouse.delta[0];
-		const newVal = val + add;
-		var nv = Number(newVal.toFixed(DEC));
-		nv = clamp(nv, _renameNode.minValue, _renameNode.maxValue);
-		_renameNode[_renameProperty] = nv;
-		const prv = _renameNode;
-		Node.setProperty();
-		_renameNode = prv;
-		_renameAll = false;
-	}
+	if (_renameNode && _renameProperty === 'output' && _mouse.pressed)
+		dragSelOutput();
 	else if (_selElement) {
 		const next = [_selElement.pos[0] + _mouse.delta[0], _selElement.pos[1] + _mouse.delta[1]];
 		_selElement.place(next);
@@ -174,8 +205,6 @@ window.addEventListener("mousemove", (e) => {
 		return;
 	setHoverElements();
 	if (_selBox.active) _selBox.update();
-	_mouse.delta = [0, 0];
 	_mouse.moved = true;
-	setTimeout(() => _mouse.moved = false, 50);
 	document.body.style.cursor = (_selElement || _selHandle) ? "grab" :  (_hovElement || _hovHandle) ? "move" : "default";
 });

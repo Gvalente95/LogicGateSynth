@@ -6,6 +6,7 @@ class Handle {
 		this.parent = parent;
 		this.start = start;
 		this.end = end;
+		this.label = null;
 		this.size = [40, 40];
 		this.pos = this.start;
 		this.relStart = [start[0] - parent.pos[0], start[1] - parent.pos[1]];
@@ -46,7 +47,7 @@ class Handle {
 		return true;
 	}
 
-	render(ctx, color = "white", width = this.lineIsHighlight ? 8 : 4) {
+	render(ctx, color = "white", width = this.lineIsHighlight ? 8 : 2) {
 		if (this === _selHandle) color = addColor(color, "white", .4);
 		var hasOutput = true;
 		if ((!this.isInput && !this.parent.output) || (this.isInput && !this.attach?.parent?.output)) {
@@ -60,8 +61,9 @@ class Handle {
 			start = end;
 			end = tmp;
 		}
+		if (_selHandle === this) this.lineIsHighlight = true;
 		var mouseAt = false;
-		var shouldCheck = true; // = _mouse.moved
+		var shouldCheck = !_renameHov; // = _mouse.moved
 		if (this === _selHandle && _hovHandle && this.canAttachTo(_hovHandle))
 			mouseAt = drawLine(ctx, start, toScrn(_hovHandle.end), color, width, 0, shouldCheck, hasOutput);
 		else if (!(this === _hovHandle && _selHandle && _selHandle.canAttachTo(this))){

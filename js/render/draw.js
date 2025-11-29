@@ -152,8 +152,10 @@ function drawRouted(ctx, start, end, color = "white", width = 8, handleSize = 0,
 }
 
 function drawText(ctx, pos, text, color = "white", backgroundColor = null, size = 25, centered = true, cursor = "", cursorIndex = null) {
+	if (!size) size = 25;
 	size *= _scale;
-	ctx.font = size + "px sans-serif";
+	// ctx.font = size + "px MyPixelFont";
+	ctx.font = size + "px Geneva";
 
 	const metrics = ctx.measureText(text);
 	const w = metrics.width + 12;

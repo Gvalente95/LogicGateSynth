@@ -9,16 +9,17 @@ class Menu{
 		this.color = 'purple';
 		this.selPage = null;
 		this.pageToCtor = {
-			'GATE': GateNode, 'OPP': OppNode, 'DISPLAY': DisplayNode, 'AUDIO': AudioNode,
-			'SELECT': SelNode, 'SPLIT': SplitNode, 'VALUE': ValNode
+			'GATE': GateNode, 'OPP': OppNode, 'DISPLAY': DisplayNode, 'AUDIO': OscNode,
+			'SELECT': SelNode, 'SPLIT': SplitNode, 'VALUE': ValNode, 'INPUT': InputNode,
 		};
 		this.nodesPages = {
 			"VALUE": ["NUM", "BOOL", "TIME", "RAND", "INCR"],
-			"OPP": ["ADD", "SUB", "SCALE", "DIV", "MOD","FLOOR", "POW", "MIN", "MAX", "MINMAX", "MAP"],
-			"DISPLAY": ["SCREEN1", "SCREEN2", "SCREEN4", "SCREEN8", "SCREEN16", "SCREEN32"],
+			"INPUT": ["KEY", "MIDI"],
+			"OPP": ["ADD", "SUB", "SCALE", "DIV", "MOD","FLOOR", "POW", "NEG", "MIN", "MAX", "MINMAX", "MAP"],
+			"DISPLAY": ["DISPL1", "DISPL2", "DISPL4", "DISPL8", "DISPL16", "DISPL32"],
 			"SELECT": ["SEL2", "SEL4", "SEL8", "SEL16", "SEL32"],
 			"SPLIT": ["SPLIT2", "SPLIT4", "SPLIT8", "SPLIT16", "SPLIT32"],
-			"AUDIO": ['SINE'],
+			"AUDIO": ['SINE', 'SAWTOOTH', 'TRIANGLE'],
 			"GATE": ["OR", "AND", "XOR", "NOR", "NAND", "XNOR", "NOT"],
 			"NC": {},
 		};
@@ -308,9 +309,9 @@ class Menu{
 			ctx.fillStyle = "rgba(0, 0, 0, 1)";
 			ctx.fillRect(rectP[0] - 2, rectP[1] - 2, rectP[2] + 4, rectP[3] + 4);
 			if (this.selPage === page) {
-				const subPos = [pos[0] - w / 2, pos[1] - h - 2];
+				const subPos = [pos[0] - w / 2, pos[1] - h * 1.5 - 2];
 				const ww = w;
-				const hh = h / 2;
+				const hh = h;
 				const subClr = "rgba(30, 70, 100, 1)";
 				for (let i = 0; i < this.nodesPages[page].length; i++) {
 					const Node = this.nodesPages[page][i];
@@ -318,7 +319,7 @@ class Menu{
 					ctx.fillRect(subPos[0] - 2, subPos[1] - 2, ww + 4, hh + 4);
 					if (pointInRect(_mouse.pos, [subPos[0], subPos[1]], [w, hh])) {
 						if (_mouse.clicked) {
-							var newElem = new this.pageToCtor[page](Node, this.contextMenuPos);
+							var newElem = new this.pageToCtor[page](Node, _mouse.world);
 							_nodes.push(newElem);
 							_selElement = newElem;
 							this.selPage = null;

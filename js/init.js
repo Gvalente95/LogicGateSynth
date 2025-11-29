@@ -16,7 +16,7 @@ function initAndAdd(elType, type, pos, output = null, input = null, system = nul
 }
 
 var bgrImg = new Image(_canvas.width * 2, _canvas.height * 2);
-bgrImg.src = "../ressources/img/BGR0.jpg";
+bgrImg.src = "ressources/img/BGR0.jpg";
 bgrImg = null;
 
 function initMem1(distBetween, pos = [_canvas.width / 2, _canvas.height / 2]) {
@@ -32,8 +32,9 @@ function initMem1(distBetween, pos = [_canvas.width / 2, _canvas.height / 2]) {
 }
 
 function init() {
-	// setTimeout(() => getPiano(['C', 'D', 'E', 'G', 'B', 'C2', 'D2', 'G2']), 50);
-	setTimeout(() => getPiano(['E', 'G', 'B', 'C2']), 50);
+	// setTimeout(() => getPiano(['C']), 50);
+	// setTimeout(() => getPiano(), 50);
+	setTimeout(() => getPiano(['F', 'G', 'A', 'C2']), 50);
 
 	// initMem1(400);
 	update();

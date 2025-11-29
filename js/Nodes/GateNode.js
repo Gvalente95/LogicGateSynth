@@ -1,7 +1,7 @@
 class GateNode extends Node{
 	constructor(type, pos) {
 		super(pos, [100, 50]);
-		this.color = "rgba(212, 57, 57, 0.47)";
+		this.color = "rgba(222, 126, 126, 1)";
 		this.output = 0;
 		this.type = type;
 		this.initHandles(pos);

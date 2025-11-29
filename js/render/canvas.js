@@ -16,6 +16,8 @@ function resizeCanvas() {
 	_canvas.style.height = h + "px";
 	_canvas.width = Math.floor(w * dpr);
 	_canvas.height = Math.floor(h * dpr);
+	_canvas.style.left = (window.innerWidth / 2 - (w / 2)) + "px";
+	_canvas.style.top = (window.innerHeight / 2 - (h / 2)) + "px";
 	_gridSize = [
 	Math.floor(_canvas.width / _cellSize),
 	Math.floor(_canvas.height / _cellSize)

@@ -8,7 +8,7 @@ class OppNode extends Node{
 		this.updateHandles();
 	}
 
-	static getInputAmount(type) {return (type === 'FLOOR' ? 1 : type === 'MINMAX' ? 3 : type === 'MAP' ? 3 : 2);}
+	static getInputAmount(type) {return (type === 'FLOOR' || type === 'NEG' ? 1 : type === 'MINMAX' ? 3 : type === 'MAP' ? 3 : 2);}
 
 	initHandles(pos = this.pos, size = this.size) {
 		this.handles = [];
@@ -36,7 +36,8 @@ class OppNode extends Node{
 			MAX:  (a,b)      => Math.max(a,b),
 			MINMAX:(a,b,c)   => clamp(a,b,c),
 			FLOOR:(a)        => Math.floor(a),
-			ADD:  (a,b)      => a + b,
+			ADD: (a, b) => a + b,
+			NEG:  (a)      => -a,
 			SUB:  (a,b)      => a - b,
 			SCALE:(a,b)      => a * b,
 			DIV:  (a,b)      => b === 0 ? 0 : a / b,
@@ -49,7 +50,8 @@ class OppNode extends Node{
 		const ins = this.ins ?? [];
 		let a = ins[0]?.output, b = ins[1]?.output, c = ins[2]?.output;
 
-		if (a) a = parseInt(a); if (b) b = parseInt(b); if (c) c = parseInt(c);
+		var f = this.type === 'SCALE' ? parseFloat : parseInt;
+		if (a) a = f(a); if (b) b = f(b); if (c) c = f(c);
 		switch (this.type) {
 			case "ADD":
 			case "SUB":
@@ -77,7 +79,6 @@ class OppNode extends Node{
 				if (b == null) b = 1;
 				break;
 		}
-
 		const result = fn.length === 1 ? fn(a) : fn.length === 2 ? fn(a,b) : fn(a,b,c);
 		this.setOutput(result);
 	}

@@ -77,7 +77,7 @@ function fillGrid() {
 	const w = _canvas.width / sqSize;
 	const h = _canvas.height / sqSize;
 
-	ctx.fillStyle = 'rgba(17, 17, 17, 0.34)';
+	ctx.fillStyle = 'rgba(17, 17, 17, 0.14)';
 	const ww = 1;
 	for (let x = -w; x < w * 2; x++){
 		ctx.fillRect(x * sqSize - _camera.scroll[0], 0, ww, _canvas.height);
@@ -99,7 +99,7 @@ function render() {
 	if (_NcStack.length) renderNcUi();
 	else {
 		if (bgrImg) ctx.drawImage(bgrImg, -_canvas.width * .2 - _camera.scroll[0] * .1, -_canvas.height * .2 - _camera.scroll[1] * .1, _canvas.width * 1.4, _canvas.height * 1.4);
-		// else if (1) fillGrid();
+		else if (1) fillGrid();
 		else if (1) ctx.fillRect(0, 0, _canvas.width, _canvas.height);
 		renderNodes();
 	}
@@ -112,7 +112,12 @@ function render() {
 	}
 	drawText(ctx, [_canvas.width - 50, _canvas.height - 30], "FPS: " + _fps, 'grey');
 	if (_debug) {
-		drawText(ctx, [500, 500], `MOUSE P${_mouse.pos} W${_mouse.world} S${_mouse.screen}`, 'white', 'black', 24, true);
+		drawText(ctx, [20, 20], `MOUSE`, 'black', null, 30, false);
+		drawText(ctx, [20, 60], `P	${_mouse.pos}`, 'black', null, 30, false);
+		drawText(ctx, [20, 100], `W	${_mouse.world}`, 'black', null, 30, false);
+		drawText(ctx, [20, 140], `dx ${_mouse.delta}`, 'black', null, 30, false);
+		drawText(ctx, [20, 200], `CAM	${_camera.scroll}`, 'black', null, 30, false);
+
 	}
 	ctx.fillStyle = _bgrClr;
 	// drawBezierLine([0, 0], [800, 800], [0, 800]);

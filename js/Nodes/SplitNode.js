@@ -20,7 +20,7 @@ class SplitNode extends Node{
 		let max = Math.max(nIn, nOut);
 
 		let W = 50;
-		let H = 20 + max * 30;
+		let H = 20 + max * 25;
 		return [W, H];
 	}
 	static getOutputAmount(type) {return (type.slice(5));}
@@ -34,7 +34,7 @@ class SplitNode extends Node{
 		for (let i = 0; i < nOut; i++){
 			var h = new Handle(hPos, hPos, this, false);
 			this.handles.push(h);
-			hPos[1] += 30 * _scale;
+			hPos[1] += 25 * _scale;
 		}
 		let nIn = SplitNode.getInputAmount(this.type);
 		let sub = 1 / nIn;

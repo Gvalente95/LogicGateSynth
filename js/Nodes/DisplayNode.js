@@ -1,7 +1,7 @@
 class DisplayNode extends Node{
 	constructor(type, pos, value = 0) {
 		super(pos, DisplayNode.getSize(type));
-		this.color = 'rgba(67, 115, 155, 0.47)';
+		this.color = 'rgba(67, 115, 155, 0.79)';
 		this.output = value;
 		this.type = type;
 		this.len = DisplayNode.getOutputLen(type);
@@ -11,7 +11,7 @@ class DisplayNode extends Node{
 	}
 
 	static getSize(type) { let n = DisplayNode.getOutputLen(type); return ([5 + n * 30, 5 + n * 30]); }
-	static getOutputLen(type) { return (type.slice(6)); }
+	static getOutputLen(type) { return (type.slice(5)); }
 
 	initHandles(pos = this.pos, size = this.size) {
 		this.handles = [];

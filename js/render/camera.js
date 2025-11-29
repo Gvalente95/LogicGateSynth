@@ -1,7 +1,7 @@
 class Camera{
 	constructor() {
 		this.scroll = [0, 0];
-		let limit = [_canvas.width * .3, _canvas.height * .3];
+		let limit = [_canvas.width * 2, _canvas.height * 2];
 		this.minX = -limit[0];
 		this.maxX = limit[0];
 		this.minY = -limit[1];

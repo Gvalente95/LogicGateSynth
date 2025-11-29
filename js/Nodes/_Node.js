@@ -7,6 +7,7 @@ class Node{
 		this.size = [size[0] * _scale, size[1] * _scale];
 		this.isHighlight = false;
 		this.lastUpdateFrame = 0;
+		this.format = '';
 		this.minValue = -Infinity;
 		this.maxValue = Infinity;
 		this.hiddenProperties = [];
@@ -55,7 +56,7 @@ class Node{
 	drawTextField(text, propertyName, pos, txtClr = "white", bgr = "rgba(119, 119, 119, 1)") {
 		if (this.hiddenProperties.includes(propertyName)) return;
 		var isRename = _renameNode === this && _renameProperty === propertyName;
-		var bgrClr = isRename && (_renameAll || propertyName === 'output') && text.length ? bgr : null;
+		var bgrClr = isRename && (_renameAll || propertyName === 'output') && text.length ? bgr : _bgrClr;
 		var hasCursor = (_input.keys['arrowLeft'] || _input.keys['arrowRight']) ||
 			(isRename && (!_renameAll || !text.length)) && ((_frame % 40) < 20);
 		var cursor =  hasCursor ? '▌' : "";
@@ -66,16 +67,29 @@ class Node{
 	displayOutput(pos) {
 		if (this.hiddenProperties.includes('output')) return;
 		var center = [pos[0] + this.size[0] / 2, pos[1] + this.size[1] / 2];
-		if (this instanceof GateNode || this instanceof NodeContainer || this.type === 'BOOL') {
+		if (this.isSlider) {
+			var w = this.size[0];
+			var h = 15;
+			var min = this.minValue, max = this.maxValue;
+			var t = (this.output - min) / (max - min);
+			t = Math.max(0, Math.min(1, t));
+			var breakPoint = Math.floor(t * w);
+			ctx.fillStyle = 'green';
+			const n = 0;
+			ctx.fillRect(pos[0] + n, pos[1] + this.size[1] - h, breakPoint - n * 2, h);
+			ctx.fillStyle = 'red';
+			ctx.fillRect(pos[0] + n + breakPoint + 2, pos[1] + this.size[1] - h, w - breakPoint - n * 2, h);
+		}
+		if (this instanceof GateNode || this instanceof NodeContainer || this instanceof InputNode || this.type === 'BOOL') {
 			const clr = this.output ? "rgba(249, 250, 141, 0.95)" : "rgba(0, 0, 0, 0.72)";
 			drawCircle(ctx, [center[0], center[1]], 3, clr, "rgba(106, 138, 47, 1)", 4);
 		} else {
-			if (this instanceof AudioNode) center = [pos[0] + this.size[0] * .73, pos[1] + this.size[1] * .35];
+			if (this instanceof OscNode) center = [pos[0] + this.size[0] + 5, pos[1] + 15];
 			else if (this.type === 'INCR') center[0] += 20;
 			let shown;
-			if (_renameNode === this && _renameProperty === 'output') {
+			if (_renameNode === this && _renameProperty === 'output' && !_renameScroll) {
 				const raw = (_renameNode[_renameProperty] ?? "").toString();
-				shown = raw;
+				shown = raw + this.format;
 				const clr = _renameAll ? "black" : "white";
 				const bgrClr = _renameAll ? "white" : "black";
 				this.drawTextField(shown, "output", center, clr, bgrClr);
@@ -90,41 +104,50 @@ class Node{
 						const short = num.toFixed(5).replace(/\.?0+$/, "");
 						shown = short + (full !== short ? ".." : "");
 					}
-				} else {
-					shown = String(val);
-				}
-				drawText(ctx, center, shown, "white", "black");
+				} else shown = String(val);
+				drawText(ctx, center, shown + this.format, "white", "rgba(0, 0, 0, 0.6)", 20, this.constructor.name !== 'OscNode');
 				if (this.hiddenProperties.includes('limits')) return;
 				if (_renameNode !== this) return;
 				if (this.minValue !== -Infinity)
-					drawText(ctx, [center[0] - 50, center[1]], this.minValue, "grey", null, 20, false);
+					drawText(ctx, [pos[0], center[1] + this.size[1]], this.minValue, "grey", null, 20, false);
 				if (this.maxValue !== Infinity)
-					drawText(ctx, [pos[0] + this.size[0] - 30, center[1]], this.maxValue, "grey", null, 20, false);
+					drawText(ctx, [pos[0] + this.size[0] - 50, center[1] + this.size[1]], this.maxValue, "grey", null, 20, false);
 			}
 		}
 	}
 
+	renderBorder(pos, size, width = 2, color) {
+		ctx.fillStyle = color;
+		ctx.fillRect(pos[0] - width / 2, pos[1] - width / 2, size[0] + width, size[1] + width);
+	}
 
 	render(ctx, pos = this.pos, size = this.size, color = this.color) {
-		if (isInspecting && this.constructor.name === 'NodeContainer')
-			log("COLOR IS" + color);
-		// ctx.fillStyle = "rgba(0,0,0,1)"; ctx.fillRect(pos[0] - 2, pos[1] - 2, size[0] + 4, size[1] + 4);
+		// this.renderBorder(pos, size, 16, addColor(color, 'rgba(0, 0, 0, 0.28)', .2));
 		if (_hovElement === this) color = addColor(color, "rgba(255, 255, 255, 1)", .5)
-		if (!this.output && this.type !== 'BOOL') color = setAlpha(color, .75);
+		// if (!this.output && this.type !== 'BOOL') color = setAlpha(color, .75);
 		if (this.isHighlight) {
 			let h = 14;
 			ctx.fillStyle = "rgba(89, 146, 193, 0.86)"; ctx.fillRect(pos[0] - h / 2, pos[1] - h / 2, size[0] + h, size[1] + h);
 		}
 		ctx.fillStyle = color; ctx.fillRect(pos[0], pos[1], size[0], size[1]);
 		if (this.name !== undefined) {
-			this.drawTextField(this.name, "name", [pos[0] + this.size[0] / 2, pos[1] - 18]);
+			this.drawTextField(this.name, "name", [pos[0] + this.size[0] / 2, pos[1] - 24]);
 			if (!this.hiddenProperties.includes('type'))
 				drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] + this.size[1] + 18], this.type, "white", _bgrClr);
 		}
 		else if (!this.hiddenProperties.includes('type'))
-			drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] - 18], this.type, "grey", _bgrClr);
+			drawText(ctx, [pos[0] + this.size[0] / 2, pos[1] - 24], this.type, "grey", _bgrClr);
 		if (this.constructor.name !== "DisplayNode")
 			this.displayOutput(pos);
+		const p = toScrn(this.pos); const s = this.size; const c = this.color;
+		for (const h of this.handles) {
+			if (h.label) {
+				let dEnd = toScrn(h.start);
+				let dStart = [p[0], dEnd[1]];
+				if (dEnd[1] < p[1]) dStart = [dEnd[0], p[1]];
+				drawText(ctx, [dStart[0] + 10, dStart[1] + 5], h.label, addColor(c, 'rgba(0, 0, 0, 1)', .5), null, 20, false);
+			}
+		}
 	}
 
 	renderHandles(ctx) {
@@ -143,9 +166,18 @@ class Node{
 				clr = setAlpha(clr, .4);
 			drawLine(ctx, dStart, dEnd, clr, h.lineIsHighlight ? 16 : 8, 0);
 			h.render(ctx, clr);
-			if (h.label !== undefined)
-				drawText(ctx, [dStart[0] + 10, dStart[1] + 5], h.label, addColor(c, 'rgba(0, 0, 0, 1)', .5), null, 20, false);
 		}
+	}
+
+
+	connectToKey(key, isTrigger = false, offset = [0, - 100]) {
+		if (!InputNode.validateKey(key)) {
+			key = '0';
+		}
+		const n = initAndAdd(InputNode, 'KEY', [this.pos[0] + offset[0], this.pos[1] + offset[1]], null, this);
+		if (!n) return;
+		n.key = key.toString();
+		n.isTrigger = isTrigger;
 	}
 
 	hideProperty(property) {
@@ -195,10 +227,12 @@ class Node{
 			if (this.output === v) return;
 			this.output = v;
 		}
-		log("");
-		log("OUTPUT WAS SET TO " + this.output, this);
-		for (const h of this.handles)
-			if (!h.isInput) h.attach?.parent?.updateInput?.(h.attach);
+		if (_debug) {
+			log("");
+			log("OUTPUT WAS SET TO " + this.output, this);
+		}
+		for (const n of this.outs)
+			if (n) n.updateInput();
 	}
 
 	onRemove() {
@@ -232,6 +266,7 @@ class Node{
 		if (p === 'output') {
 			if (val === ".") val = "0";
 			if (val === "-.") val = "-0";
+			if (!n.isFloat) val = Math.floor(val);
 			n.output = null;
 			n.setOutput(val);
 		}
@@ -246,48 +281,38 @@ class Node{
 		_renameNode = null;
 	}
 	static addCharToName(e) {
+		if (_renameScroll) return;
 		const n = _renameNode;
 		const p = _renameProperty;
-		if (e.code === "Enter")
-			Node.setProperty();
-		else if (e.code === 'Escape')
-			Node.resetProperty();
-		else if (e.code === 'ArrowLeft')
-			_renameIdx = _renameAll ? 0 : Math.max(_renameIdx - 1, 0);
-		else if (e.code === 'ArrowRight')
-			_renameIdx = _renameAll ? n[p].length : Math.min(_renameIdx + 1, n[p].length);
-		else {
-			if (e.code === "Backspace")
+		switch (e.code) {
+			case 'Enter': Node.setProperty(); return;
+			case 'Escape': Node.resetProperty(); return;
+			case 'ArrowLeft': _renameIdx = _renameAll ? 0 : Math.max(_renameIdx - 1, 0);
+				return;
+			case 'ArrowRight': _renameIdx = _renameAll ? n[p].length : Math.min(_renameIdx + 1, n[p].length);
+				return;
+			case 'Backspace':
 				if (_renameAll) { n[p] = ''; _renameIdx = 0; }
-				else {
-					if (n[p].length)
-					{
-						n[p] = removeCharAt(n[p], _renameNode[p].length - 1);
-						if (_renameIdx) _renameIdx--;
-					}
+				else if (n[p].length){
+					n[p] = removeCharAt(n[p], _renameNode[p].length - 1);
+					if (_renameIdx) _renameIdx--;
 				}
-			else {
-				var isValid = false;
-				if (_renameProperty === 'output') {
-					const newName = n[p] + e.key;
-					if (_renameAll) {
-						if (isPartialNumber(e.key) || e.key === '.')
-							n[p] = e.key;
-						else return;
-					}
-					isValid = n[p].length < 6 && (isPartialNumber(newName) || n[p] === '.');
-				}
-				else isValid = isPrintableKey(e) && n[p].length < 15;
-				if (isValid) {
-					if (_renameAll) {
-						n[p] = e.key;
-						_renameIdx = 1;
-					} else
-						n[p] = n[p].slice(0, _renameIdx) + e.key + n[p].slice(_renameIdx++);
-				}
-			}
+				return;
 		}
-		if (e.key !== 'Shift')
+		const key = e.key;
+		if (p === 'key') {if (InputNode.validateKey(key)) n[p] = key; return;}
+		var isValid;
+		if (p === 'output')
+			isValid = (!_renameAll && isPartialNumber(n[p] + key)) || (isPartialNumber(key) || key === '.');
+		else isValid = isPrintableKey(e) && n[p].length < 15;
+		if (isValid) {
+			if (_renameAll) {
+				n[p] = key;
+				_renameIdx = 1;
+			}
+			else n[p] = n[p].slice(0, _renameIdx) + key + n[p].slice(_renameIdx++);
+		}
+		if (key !== 'Shift')
 			_renameAll = false;
 	}
 
@@ -299,6 +324,7 @@ class Node{
 		_renameNode = node;
 		_renameProperty = property;
 		_renameFallback = fallback;
+		_renameScroll = false;
 		_selBox.reset();
 		_renameAll = true;
 		if (property === 'name' && _renameNode[property] === fallback)

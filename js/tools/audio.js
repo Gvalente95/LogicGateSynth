@@ -6,15 +6,8 @@ class AudioManager {
 		this.active = true;
 		this.playInterval = 0.05;
 		this.audioQueue = [];
-		this.buttonOk = new Audio(audioPath + "buttonOk.mp3");
-		this.gameOn = new Audio(audioPath + "gameOn.mp3");
-		this.dig = new Audio(audioPath + "dig.mp3");
-		this.tuk = new Audio(audioPath + "tuk.mp3");
 		this.click = new Audio(audioPath + "click.mp3");
-		this.clock = new Audio(audioPath + "clock.mp3");
-		this.soundCapture = new Audio(audioPath + "Capture.mp3");
-		this.soundDenied = new Audio(audioPath + "denied.mp3");
-		this.trill = new Audio(audioPath + "trill.mp3");
+
 	}
 
 	playSoundAtIndex(list, index, volume = 1)

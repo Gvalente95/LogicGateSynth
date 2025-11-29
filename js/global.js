@@ -11,8 +11,10 @@ _hangHandle = null;
 _hovLine = null;
 
 _renameNode = null;
+_renameScroll = false;
 _renameProperty = null;
 _renameFallback = null;
+_renameHov = null;
 _renameAll = false;
 _renameIdx = null;
 _frame = 0;
@@ -35,7 +37,8 @@ _NodesRegistry = {
 	OppNode,
 	NodeContainer,
 	DisplayNode,
-	AudioNode,
+	OscNode,
 	SelNode,
 	SplitNode,
+	InputNode,
 };
