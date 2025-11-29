@@ -29,7 +29,7 @@ _input = new Input();
 _menu = new Menu();
 _NcStack = [];
 _au = new AudioManager();
-_scale = isMobile ? 1.5 : 1;
+_scale = 1;
 
 _NodesRegistry = {
 	GateNode,
